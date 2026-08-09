@@ -1,0 +1,72 @@
+# Architecture
+
+## Composition
+
+`src/index.ts` creates one extension-factory-owned `GoalRuntime`, `GoalVerifier`, and `GoalCommandController`. It registers lifecycle handlers first, then the three main-agent tools and `/goal` command.
+
+The implementation keeps one mutable controller per Pi session runtime. Canonical Goal data is immutable at module boundaries: pure transitions in `state.ts` return new objects, and runtime handoffs use structured clones.
+
+## Modules
+
+- `state.ts`: GoalSpec/GoalState types, validation, pure lifecycle transitions, canonical custom-entry restore, and status formatting.
+- `prompts.ts`: pure uncertainty-led refinement, execution, continuation, and verifier prompt builders.
+- `safety.ts`: visible-output normalization, SHA-256 fingerprints, and no-progress accounting.
+- `continuation.ts`: single-flight intent/delivery controller and cancellation interception.
+- `runtime.ts`: current state, run ownership, transient intents, settled dispatch decisions, persistence, and concise statusline updates.
+- `commands.ts`: `/goal` parsing, command registration, pending user actions, panel orchestration, and kickoff delivery.
+- `ui.ts`: centered scrollable Goal Control overlay, centered inline/external JSON editor overlay, keyboard controls, and status output.
+- `tools.ts`: `goal_propose`, `goal_submit`, and `goal_pause` adapters plus compact/expanded proposal and submitted-result rendering.
+- `verifier.ts`: isolated in-memory AgentSession, finalized interaction observation, and terminal verifier result tool.
+- `verification-ui.ts`: bounded verifier transcript projection, append-only start/final display entries, and compact/expanded entry rendering.
+- `lifecycle.ts`: Pi event bindings and execution of runtime effects.
+- `index.ts`: extension entrypoint and composition root.
+
+## Canonical state and transient ownership
+
+`goal-state-v1` custom entries contain only the current Goal state. The latest entry on the active session branch wins. The model has no Goal identity, run-generation, or revision field.
+
+Pending user edit, pause, and cancel requests are canonical because they are explicit user decisions that must survive reload. A legacy `verifying` entry without `submissionResult` restores as a Pi pause so the Goal is preserved and can be resumed and resubmitted under the new protocol. The exact submitted result is also canonical while verification is running so a resumed fresh verifier receives the same user-visible content. Agent proposal/submission/pause intents, continuation tickets, verifier operation ownership, and panel ownership are transient. Losing a transient terminal intent during process shutdown leaves the Goal in its prior safe state; the worker can submit it again after resume.
+
+`goal-verification-ui-v1` custom entries are observational state. A start entry anchors one visible verifier card. Finalized interactions update its in-memory projection and request a TUI render; one invisible final snapshot preserves the bounded transcript and result for reload. An observational operation ID prevents attempt-number collisions between successive Goals; it is not Goal or run identity and never enters GoalState, prompts, tools, statusline, or the Control Panel. These entries never participate in Goal restoration or model context.
+
+A continuation ticket has an internal delivery marker so a queued extension message can be intercepted after a user transition cancels it. The marker owns only that message delivery. It is never placed in GoalState, tool parameters, the Control Panel, or verifier context.
+
+## Settled ordering
+
+The main-session ordering is:
+
+1. `before_agent_start` classifies the run as refining or active and injects the corresponding Goal prompt. Refinement identifies material uncertainties, self-discovers available facts, asks dependency-aware numbered question rounds, avoids exhaustive grilling, and proposes once remaining uncertainty cannot affect execution or acceptance.
+2. Goal tools record proposal or terminal intent.
+3. `/goal edit`, pause, or cancel during work persists `pendingUserAction` without changing status.
+4. `agent_end` records run outcome, iteration, and automatic-progress observations.
+5. `agent_settled` commits exactly one ordered decision:
+   - pending user action;
+   - proposal or agent terminal intent;
+   - Pi interruption/safety pause;
+   - automatic continuation.
+
+Fresh verifier settlement uses the same user-first rule. A verifier result is held in its fresh session closure. After `session.prompt()` fully resolves, the main controller first applies any pending user action, then commits pass/fail.
+
+## Independent verifier boundary
+
+The verifier uses `DefaultResourceLoader` with extensions, skills, prompt templates, themes, and context files disabled. Its `SessionManager` is in-memory, so no verifier conversation is attached to the worker session.
+
+The verifier receives the approved GoalSpec and exact user-visible `goal_submit.result`; it does not receive the rest of the worker transcript. Its complete tool allowlist is `read`, `bash`, and `goal_verification_result`. `bash` already covers search, listing, commands, tests, builds, temporary probes, and project-specific CLIs, so dedicated `edit`, `write`, `grep`, `find`, and `ls` wrappers are omitted. The strict investigation-only prompt remains a behavioral boundary because bash itself is mutation-capable; this is not a security sandbox.
+
+The verifier session publishes only finalized message events to the display projection. This makes its request, reasoning text, tool calls, and tool results observable without exposing the worker transcript to the verifier or injecting the verifier transcript into either model context. A verifier operation is owned by its controller object. Session shutdown marks it aborted, calls `abort()`, disposes the session, and ignores its eventual promise completion.
+
+## UI invariants
+
+- The Control Panel is a centered overlay with a bounded viewport and line/page scrolling.
+- Edit opens a second centered overlay backed by Pi's extension editor component; the configured external-editor keybinding and command remain active.
+- A collapsed `goal_propose` result shows the main goal; expansion adds every subtask and detail before a dim status note.
+- A collapsed `goal_submit` result shows at most four width-aware lines and ends truncated content with an ellipsis; expansion shows the complete unchanged result, which remains identical to verifier input.
+- Verification has one tool-result-like transcript card titled `Verifier` per attempt. The title uses the built-in tool-call title style. While running, collapsed output directly tails the latest body-styled trace item without a verifying label, and expanded output shows the complete bounded body-styled trace. After settlement, collapsed output emphasizes yellow PASS or red FAIL/ERROR with a three-line details summary, expanded output shows complete details, and neither mode shows the trace.
+- The final verification snapshot renders no row; the start-entry component reads the latest projection so completion updates the original card.
+- Goal content is not persisted above the input editor; only the concise `Goal <status> [#N]` statusline remains.
+- No Control Panel state has a Cancel button.
+- `/goal cancel` is the only user cancellation entry.
+- Refining `Esc` resolves to the same `refine` action as **Refine with agent**.
+- Active and verifying GoalSpec views are read-only; only `/goal edit` can request a change.
+- A refining panel opened during a running main-agent turn is also read-only; Start/Edit appear only after the run settles.
+- UI callbacks call runtime transitions or register pending actions. They never write Goal status directly.

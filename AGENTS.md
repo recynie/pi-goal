@@ -1,0 +1,29 @@
+# AGENTS.md
+
+This workspace implements `@recynie/pi-goal`. It builds on the lifecycle and continuation concepts of `@narumitw/pi-goal`. Each session branch maintains one current Goal. The user and main agent refine and confirm the main goal, verifiable subtasks, and details in the original session. Lifecycle changes made during a run are committed serially at settled boundaries. After the work is submitted, an independent fresh-context verifier with access only to `read`, `bash`, and the result tool validates it. The main interface displays the verifier interaction in an expandable card, and the verifier submits its conclusion through the result tool using `pass` or `fail` plus details. `@misunders2d/pi-goal` serves only as a product-concept reference and is not an implementation base.
+
+## Workspace Map
+
+- `.gitignore`: Ignores upstream source snapshots, dependencies, build artifacts, coverage output, and logs.
+- `AGENTS.md`: Describes the workspace and provides a high-level directory index.
+- `DESIGN.md`: Defines the single-current-Goal design based on the narumitw implementation, including the scrollable Control Panel, inline and external editor overlays, expandable proposal and verifier rendering, concise statusline, serial settled-boundary transitions, main goal/subtasks/details refinement flow, user-visible `goal_submit.result`, pause/resume behavior, independent verifier protocol, and proposed architecture.
+- `LICENSE`: The project's MIT license.
+- `README.md`: GitHub-facing project overview with motivation, lifecycle diagram, requirements, canonical Pi git-source installation, trial, update, removal, local-development and quick-start instructions, commands, Goal refinement and Control Panel behavior, agent tools, independent-verifier trust boundaries, safety mechanisms, scope, and development entry points.
+- `docs/`: Implementation-level documentation.
+  - `docs/architecture.md`: Module boundaries, canonical and transient state, settled ordering, verifier behavior, and UI invariants.
+  - `docs/testing.md`: Incremental automated testing, isolated Pi/tmux startup, and live verifier validation workflows.
+- `package.json`: Pi package manifest, peer and development dependencies, and development scripts.
+- `package-lock.json`: Reproducible npm development dependency lockfile.
+- `src/`: Complete extension implementation, including state and persistence; refinement, execution, and verifier prompts; safety; continuation; runtime; commands; the scrollable overlay Control Panel; the popup Goal editor honoring Pi's external-editor configuration; the statusline; lifecycle tools with collapsible and expandable proposal and submission-result views; the fresh verifier; verifier transcript UI with a tool-call title, body-style trace viewport, and settled details views; lifecycle coordination; and the composition root.
+- `test/`: Node test runner tests covering state and statusline behavior; proportional refinement prompts driven by material uncertainty; execution and verifier prompts; safety; continuation; settled precedence; commands; identical submission results for the user and verifier; four-line collapsed submission-result truncation and full expansion; the verifier's minimal tool allowlist; collapsed and expanded proposal and verifier rendering; title, trace, and result styling; the latest-trace viewport; details-summary truncation; settled-trace hiding; verifier transcript restoration; README command documentation; editor and Control Panel overlay contracts; and Pi resource-loader smoke loading.
+- `tsconfig.json`: Strict TypeScript configuration.
+- `references/`: Upstream source snapshots of existing Pi goal-pattern extensions.
+  - `references/README.md`: Versions, sources, and snapshot information for the reference projects.
+  - `references/narumitw-pi-goal/`: Source, tests, and project documentation for `@narumitw/pi-goal`.
+  - `references/misunders2d-pi-goal/`: Source, tests, skill, and project documentation for `@misunders2d/pi-goal`.
+
+Update `AGENTS.md` whenever any of the following occurs:
+
+- A file or directory is created, or file contents are modified.
+- A file or directory description needs revision because a significant content change has made the existing description outdated.
+- A directory is moved or copied.
