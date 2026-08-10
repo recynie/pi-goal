@@ -69,8 +69,8 @@ test("verification entry rerenders from verifying to pass with expandable transc
   assert.equal(appended.every((entry) => entry.customType === VERIFICATION_UI_ENTRY_TYPE), true);
 
   const running = anchor.render(120).join("\n");
-  assert.match(running, /Verifier/);
-  assert.doesNotMatch(running, /Verifying/);
+  assert.match(running, /Verifying/);
+  assert.doesNotMatch(running, /Verifier/);
   assert.match(running, /bash result/);
   assert.match(running, /42 tests passed/);
   assert.doesNotMatch(running, /npm test/);
@@ -89,13 +89,13 @@ test("verification entry rerenders from verifying to pass with expandable transc
     "",
   );
   const completed = anchor.render(120).join("\n");
-  assert.match(completed, /Verifier/);
-  assert.match(completed, /PASS/);
+  assert.match(completed, /Verification pass/);
+  assert.doesNotMatch(completed, /\bPASS\b/);
   assert.match(completed, /All approved standards are satisfied/);
   assert.doesNotMatch(completed, /npm test|42 tests passed/);
 
   const completedExpanded = expandedAnchor.render(120).join("\n");
-  assert.match(completedExpanded, /PASS/);
+  assert.match(completedExpanded, /Verification pass/);
   assert.match(completedExpanded, /Details/);
   assert.match(completedExpanded, /All approved standards are satisfied/);
   assert.doesNotMatch(completedExpanded, /npm test|42 tests passed/);
@@ -112,15 +112,15 @@ test("verification cards stay isolated when separate Goals both use attempt one"
   assert.ok(renderer);
   const firstCard = renderer({ data: appended[0]?.data }, { expanded: false }, theme);
   ui.finish(firstOperation, "pass", "First Goal passed.");
-  assert.match(firstCard.render(120).join("\n"), /PASS/);
+  assert.match(firstCard.render(120).join("\n"), /Verification pass/);
 
   ui.start(1);
   const secondCard = renderer({ data: appended[2]?.data }, { expanded: false }, theme);
   const secondText = secondCard.render(120).join("\n");
-  assert.match(secondText, /Verifier/);
+  assert.match(secondText, /Verifying/);
   assert.match(secondText, /Waiting for verifier output/);
-  assert.doesNotMatch(secondText, /Verifying|PASS|FAIL/);
-  assert.match(firstCard.render(120).join("\n"), /PASS/);
+  assert.doesNotMatch(secondText, /Verification pass|Verification fail/);
+  assert.match(firstCard.render(120).join("\n"), /Verification pass/);
 });
 
 test("verification display restores the latest event from session entries", () => {
@@ -158,12 +158,12 @@ test("verification display restores the latest event from session entries", () =
     { expanded: true },
     theme,
   ).render(120).join("\n");
-  assert.match(text, /FAIL/);
+  assert.match(text, /Verification fail/);
   assert.doesNotMatch(text, /One test failed/);
   assert.match(text, /A required check failed/);
 });
 
-test("verifier title and traces use tool-call and body styles while results use status colors", () => {
+test("verification titles and traces use tool styles with tool outcome backgrounds", () => {
   const appended: CapturedEntry[] = [];
   let renderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;
   const ui = new VerificationUi({
@@ -171,13 +171,17 @@ test("verifier title and traces use tool-call and body styles while results use 
     appendEntry: (customType: string, data: unknown) => void appended.push({ customType, data }),
   } as unknown as ExtensionAPI);
   const fgCalls: Array<{ color: string; text: string }> = [];
+  const bgCalls: Array<{ color: string; text: string }> = [];
   const boldCalls: string[] = [];
   const recordingTheme = {
     fg: (color: string, text: string) => {
       fgCalls.push({ color, text });
       return text;
     },
-    bg: (_color: string, text: string) => text,
+    bg: (color: string, text: string) => {
+      bgCalls.push({ color, text });
+      return text;
+    },
     bold: (text: string) => {
       boldCalls.push(text);
       return text;
@@ -190,23 +194,32 @@ test("verifier title and traces use tool-call and body styles while results use 
     { kind: "tool-call", label: "bash", text: "npm test" },
   ]);
   card.render(120);
-  assert.ok(fgCalls.some((call) => call.color === "toolTitle" && call.text === "Verifier"));
+  assert.ok(fgCalls.some((call) => call.color === "toolTitle" && call.text === "Verifying"));
   assert.ok(fgCalls.some((call) => call.color === "toolOutput" && call.text === "bash"));
-  assert.deepEqual(boldCalls, ["Verifier"]);
+  assert.ok(bgCalls.some((call) => call.color === "toolPendingBg"));
+  assert.deepEqual(boldCalls, ["Verifying"]);
   assert.equal(fgCalls.some((call) => call.color === "accent" || call.color === "muted"), false);
 
   fgCalls.length = 0;
+  bgCalls.length = 0;
   boldCalls.length = 0;
   ui.finish(operationId, "pass", "Everything passed.");
   card.render(120);
-  assert.ok(fgCalls.some((call) => call.color === "warning" && call.text === "PASS"));
+  assert.ok(
+    fgCalls.some((call) => call.color === "toolTitle" && call.text === "Verification pass"),
+  );
+  assert.ok(bgCalls.some((call) => call.color === "toolSuccessBg"));
 
   const failedOperation = ui.start(1);
   const failedCard = renderer({ data: appended[2]?.data }, { expanded: false }, recordingTheme);
   ui.finish(failedOperation, "fail", "A check failed.");
   fgCalls.length = 0;
+  bgCalls.length = 0;
   failedCard.render(120);
-  assert.ok(fgCalls.some((call) => call.color === "error" && call.text === "FAIL"));
+  assert.ok(
+    fgCalls.some((call) => call.color === "toolTitle" && call.text === "Verification fail"),
+  );
+  assert.ok(bgCalls.some((call) => call.color === "toolErrorBg"));
 });
 
 test("collapsed final details are width-aware and truncated to three lines", () => {
@@ -224,7 +237,7 @@ test("collapsed final details are width-aware and truncated to three lines", () 
   ui.finish(operationId, "fail", details);
 
   const collapsedLines = collapsed.render(42);
-  assert.equal(collapsedLines.length, 5);
+  assert.equal(collapsedLines.length, 4);
   assert.match(collapsedLines.join("\n"), /…/);
   assert.doesNotMatch(collapsedLines.join("\n"), /FINAL-MARKER/);
 

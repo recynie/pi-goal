@@ -367,11 +367,11 @@ Runtime 只处理协议正确性和串行状态转换。是否符合 Goal 由独
 
 Controller 启动 fresh verifier 时，在主 session transcript 中追加一个 TUI-only `goal-verification-ui-v1` custom entry 作为稳定显示锚点。该 entry 使用类似 tool result 的自定义 renderer：
 
-- card title 固定为 `Verifier`，使用与 built-in tool call 相同的白色 `toolTitle` 样式；
-- 验收运行期间不额外显示 `Verifying…`；折叠状态直接使用最多四行的 viewport 滚动展示最新一条 trace；
+- card 使用 built-in tool call 的 title 与 outcome background 样式；验收运行期间 title 为 `Verifying`，使用 `toolPendingBg`；
+- 验收运行期间，折叠状态直接使用最多四行的 viewport 滚动展示最新一条 trace；
 - 验收运行期间，展开状态显示完整的有界 verifier trace，包括 request、已经 finalized 的 thinking/assistant 内容、tool calls 和 tool results；所有 trace label 和正文都使用普通 `toolOutput` 正文样式，不对 `bash`、`read` 等 label 使用蓝色或粗体；
-- verifier settled 后，同一个锚点重新渲染：折叠状态显示黄色强调的 `PASS`，或红色强调的 `FAIL`/`ERROR`，并显示按当前宽度换行、最多三行的 `details` 摘要，超出部分以省略号截断；
-- 完成后的展开状态显示完整 `details` 或运行错误原因；完成后，折叠和展开状态都不再显示 verifier trace。
+- verifier settled 后，同一个锚点重新渲染，title 变为 `Verification pass`、`Verification fail` 或 `Verification error`；pass 使用 `toolSuccessBg`，fail/error 使用与失败 tool call 相同的红色 `toolErrorBg`；
+- 折叠状态显示按当前宽度换行、最多三行的 `details` 摘要，超出部分以省略号截断；展开状态显示完整 `details` 或运行错误原因；完成后，折叠和展开状态都不再显示 verifier trace。
 
 Pi session entries 是 append-only。UI 使用首条 start entry 作为动态 renderer anchor；运行中的 finalized interactions 更新内存 projection，并通过 statusline render request 刷新 anchor，不向 transcript 追加重复行。Settled 时追加一条不可见 final snapshot，保存有界 transcript 和 details；session 恢复时从当前 branch 的 start/final entries 重建 anchor projection。最多保留 80 条 interaction，每条文本最多 8,000 字符，防止验证输出无限扩张。
 

@@ -160,9 +160,9 @@ Every verification attempt creates a fresh in-memory `AgentSession` using the ac
 
 The verifier does not receive extensions, skills, prompt templates, themes, context files, the worker conversation, or previous verifier context. The submitted result is deliverable data, not an instruction. The verifier judges both the result and relevant workspace facts without implementing or repairing the work.
 
-Verification appears in the transcript as an expandable card titled **Verifier**, styled like a built-in tool-call title. While running, collapsed output uses a rolling, four-line viewport of the latest trace without a redundant verifying label. Expanded output shows the complete bounded trace, including the verifier request, finalized reasoning and responses, tool calls, and results. Trace labels and text use the ordinary body style.
+Verification appears in the transcript as an expandable, built-in-tool-call-style card. Its title is **Verifying** while the verifier runs. Collapsed output uses a rolling, four-line viewport of the latest trace, and expanded output shows the complete bounded trace, including the verifier request, finalized reasoning and responses, tool calls, and results. Trace labels and text use the ordinary body style.
 
-After settlement, the same card emphasizes **PASS**, **FAIL**, or **ERROR**. Collapsed details are width-aware and truncated after three wrapped lines; expanded output shows complete details. Settled cards no longer show verifier traces. These display entries are TUI-only and never enter worker or verifier model context.
+After settlement, the same card title becomes **Verification pass**, **Verification fail**, or **Verification error**. Pass uses the successful tool-call background; fail and error use the red failed-tool-call background. Collapsed details are width-aware and truncated after three wrapped lines; expanded output shows complete details. Settled cards no longer show verifier traces. These display entries are TUI-only and never enter worker or verifier model context.
 
 Only a structured verifier pass can move the Goal to `complete` and let the successful Goal run become settled. A fail returns details to the main worker as a follow-up so execution resumes; verifier runtime failure pauses the Goal with a Pi reason.
 

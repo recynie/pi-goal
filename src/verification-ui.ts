@@ -242,19 +242,23 @@ function renderVerificationView(view: VerificationView, expanded: boolean, theme
       : view.status === "pass"
         ? "toolSuccessBg"
         : "toolErrorBg";
-  const color = view.status === "pass" ? "warning" : "error";
-  const statusLabel =
-    view.status === "pass" ? "PASS" : view.status === "fail" ? "FAIL" : "ERROR";
+  const title =
+    view.status === "verifying"
+      ? "Verifying"
+      : view.status === "pass"
+        ? "Verification pass"
+        : view.status === "fail"
+          ? "Verification fail"
+          : "Verification error";
   const box = new Box(1, 0, (text) => theme.bg(background, text));
-  box.addChild(new Text(theme.fg("toolTitle", theme.bold("Verifier")), 0, 0));
+  box.addChild(new Text(theme.fg("toolTitle", theme.bold(title)), 0, 0));
 
   if (view.status !== "verifying") {
-    box.addChild(new Text(theme.fg(color, theme.bold(statusLabel)), 0, 0));
     if (view.details) {
       box.addChild(
         expanded
           ? new Text(
-              `${theme.fg(color, theme.bold("Details"))}\n${theme.fg("toolOutput", view.details)}`,
+              `${theme.fg("toolOutput", theme.bold("Details"))}\n${theme.fg("toolOutput", view.details)}`,
               0,
               1,
             )

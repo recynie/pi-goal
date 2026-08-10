@@ -59,13 +59,16 @@ test("README documents popup editing, external editing, and proposal expansion",
 });
 
 test("README documents the observable verifier card lifecycle", () => {
-  assert.match(readme, /card titled \*\*Verifier\*\*/iu);
-  assert.match(readme, /styled like a built-in tool-call title/iu);
+  assert.match(readme, /built-in-tool-call-style card/iu);
+  assert.match(readme, /title is \*\*Verifying\*\* while the verifier runs/iu);
   assert.match(readme, /rolling, four-line viewport of the latest trace/iu);
-  assert.match(readme, /without a redundant verifying label/iu);
   assert.match(readme, /complete bounded trace/iu);
   assert.match(readme, /trace labels and text use the ordinary body style/iu);
-  assert.match(readme, /\*\*PASS\*\*.*\*\*FAIL\*\*.*\*\*ERROR\*\*/iu);
+  assert.match(
+    readme,
+    /\*\*Verification pass\*\*.*\*\*Verification fail\*\*.*\*\*Verification error\*\*/iu,
+  );
+  assert.match(readme, /fail and error use the red failed-tool-call background/iu);
   assert.match(readme, /truncated after three wrapped lines/iu);
   assert.match(readme, /Settled cards no longer show verifier traces/iu);
   assert.match(readme, /TUI-only and never enter worker or verifier model context/iu);
