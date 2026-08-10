@@ -438,7 +438,7 @@ Goal 进入 `active` 后，主 agent 在原 Pi session 中持续工作：
 
 每个 Pi session branch 最多维护一个当前非终止 Goal。MVP 不提供 Goal list、queue、并行 active Goal 或通过标识选择 Goal 的命令。存在当前 Goal 时，新的 `/goal <main goal>` 应提示用户使用 edit，或先 cancel 当前 Goal。相关工作应表达为 subtasks；互不相关的并行工作使用不同 Pi session。
 
-Goal state 只保存在 Pi session custom entry 中。恢复时读取当前 branch 的最后一条 canonical state：
+Goal state 只保存在 Pi session custom entry 中。恢复时读取当前 branch 的最后一条 canonical state。`/tree` 导航后，controller 清理旧 branch 的 transient owner，并从新 branch 重建 canonical state 和 verifier display。`refining` 原样恢复；`active` 等待用户下一条消息，该轮 settled 后才恢复 automatic continuation；`verifying` 持久化为 Pi `paused` 并将遗留 verifier card 标记为中断；Goal 创建前的 branch 清空 statusline。Tree restore 不把旧 branch 的内存状态写到新 leaf，也不自动启动 worker 或 verifier。
 
 ```ts
 interface GoalState {

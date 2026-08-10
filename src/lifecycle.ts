@@ -65,6 +65,10 @@ export function registerGoalLifecycle(
             ctx.ui.notify(reason, "error");
           }
           break;
+        case "interrupt-verification-display":
+          verificationUi.interruptRunning(effect.details);
+          runtime.updateUi(ctx);
+          break;
       }
     }
   };
@@ -78,6 +82,12 @@ export function registerGoalLifecycle(
   pi.on("session_shutdown", (_event, ctx) => {
     verifier.shutdown();
     runtime.shutdown(ctx);
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    verifier.shutdown();
+    verificationUi.restore(ctx.sessionManager.getBranch());
+    await dispatchEffects(runtime.restoreTreeBranch(ctx), ctx);
   });
 
   pi.on("input", (event) => {

@@ -7,6 +7,58 @@ import type { GoalRuntime, RuntimeEffect, VerifierOutcome } from "../src/runtime
 import type { GoalVerifier } from "../src/verifier.js";
 import type { VerificationUi } from "../src/verification-ui.js";
 
+test("tree navigation aborts transient verification and restores the selected branch", async () => {
+  const handlers = new Map<string, (...args: any[]) => unknown>();
+  const pi = {
+    on: (name: string, handler: (...args: any[]) => unknown) => void handlers.set(name, handler),
+  } as unknown as ExtensionAPI;
+  const calls: string[] = [];
+  const runtime = {
+    disposed: false,
+    restoreTreeBranch: () => {
+      calls.push("restore-state");
+      return [{ kind: "interrupt-verification-display", details: "Tree navigation." }];
+    },
+    updateUi: () => void calls.push("update-ui"),
+  } as unknown as GoalRuntime;
+  const verifier = {
+    shutdown: () => void calls.push("shutdown-verifier"),
+  } as unknown as GoalVerifier;
+  const branch = [{ type: "custom", customType: "goal-state-v1", data: null }];
+  const verificationUi = {
+    restore: (entries: unknown) => {
+      assert.equal(entries, branch);
+      calls.push("restore-display");
+    },
+    interruptRunning: (details: string) => {
+      assert.equal(details, "Tree navigation.");
+      calls.push("interrupt-display");
+    },
+  } as unknown as VerificationUi;
+  registerGoalLifecycle(
+    pi,
+    runtime,
+    verifier,
+    verificationUi,
+    () => ({}) as GoalCommandController,
+  );
+  const handler = handlers.get("session_tree");
+  assert.ok(handler);
+  const ctx = {
+    sessionManager: { getBranch: () => branch },
+  } as unknown as ExtensionContext;
+
+  await handler({}, ctx);
+
+  assert.deepEqual(calls, [
+    "shutdown-verifier",
+    "restore-display",
+    "restore-state",
+    "interrupt-display",
+    "update-ui",
+  ]);
+});
+
 test("verification keeps the owning lifecycle dispatch running until the verifier settles", async () => {
   const pi = { on: () => {} } as unknown as ExtensionAPI;
   let releaseVerifier: (() => Promise<void>) | undefined;

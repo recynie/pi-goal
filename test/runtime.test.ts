@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { GoalRuntime } from "../src/runtime.js";
+import {
+  GoalRuntime,
+  TREE_VERIFICATION_PAUSE_REASON,
+} from "../src/runtime.js";
+import {
+  createRefiningGoal,
+  GOAL_STATE_ENTRY_TYPE,
+  type GoalState,
+} from "../src/state.js";
 
 function harness() {
   const entries: unknown[] = [];
   const statuses: Array<string | undefined> = [];
+  let branchEntries: unknown[] = [];
   let widgetCalls = 0;
   let idle = true;
   const pi = {
@@ -14,6 +23,9 @@ function harness() {
   const ctx = {
     isIdle: () => idle,
     hasPendingMessages: () => false,
+    sessionManager: {
+      getBranch: () => branchEntries,
+    },
     ui: {
       setStatus: (_key: string, value: string | undefined) => void statuses.push(value),
       setWidget: () => void (widgetCalls += 1),
@@ -27,6 +39,11 @@ function harness() {
     statuses,
     widgetCalls: () => widgetCalls,
     setIdle: (value: boolean) => void (idle = value),
+    setBranchState: (state: GoalState | undefined) => {
+      branchEntries = state
+        ? [{ type: "custom", customType: GOAL_STATE_ENTRY_TYPE, data: structuredClone(state) }]
+        : [];
+    },
   };
 }
 
@@ -51,6 +68,74 @@ test("runtime uses the statusline without setting an above-editor widget", () =>
   const { statuses, widgetCalls } = activeRuntime();
   assert.equal(widgetCalls(), 0);
   assert.equal(statuses.at(-1), "Goal active");
+});
+
+test("tree restore clears Goal state and status before the Goal was created", () => {
+  const { runtime, ctx, statuses, setBranchState } = activeRuntime();
+  runtime.continuation.request();
+  setBranchState(undefined);
+
+  assert.deepEqual(runtime.restoreTreeBranch(ctx), []);
+  assert.equal(runtime.state, undefined);
+  assert.equal(runtime.continuation.hasWork(), false);
+  assert.equal(statuses.at(-1), undefined);
+});
+
+test("tree restore keeps active idle until the next user run starts continuation", () => {
+  const { runtime, ctx, setBranchState } = activeRuntime();
+  const active = structuredClone(runtime.state as GoalState);
+  let queuedPrompt = "";
+  runtime.continuation.request();
+  assert.equal(runtime.continuation.dispatch({
+    sendUserMessage: (text: string) => void (queuedPrompt = text),
+  } as Pick<ExtensionAPI, "sendUserMessage">, ctx), true);
+  setBranchState(active);
+
+  assert.deepEqual(runtime.restoreTreeBranch(ctx), []);
+  assert.equal(runtime.state?.status, "active");
+  assert.equal(runtime.continuation.hasWork(), false);
+  assert.equal(runtime.continuation.consumeCancelledPrompt(queuedPrompt), true);
+
+  runtime.beginMainRun("active", false);
+  runtime.finishMainRun([assistant("stop", "Continuing after user input")]);
+  assert.equal(runtime.continuation.hasWork(), true);
+  assert.deepEqual(runtime.settleMain(ctx), [{ kind: "dispatch-continuation" }]);
+});
+
+test("tree restore preserves refining without starting work", () => {
+  const { runtime, ctx, entries, setBranchState } = harness();
+  const refining = createRefiningGoal("Clarify the release");
+  setBranchState(refining);
+  const persistedBefore = entries.length;
+
+  assert.deepEqual(runtime.restoreTreeBranch(ctx), []);
+  assert.equal(runtime.state?.status, "refining");
+  assert.deepEqual(runtime.state?.draft, refining.draft);
+  assert.equal(runtime.continuation.hasWork(), false);
+  assert.equal(entries.length, persistedBefore);
+});
+
+test("tree restore pauses verification and requests display settlement", () => {
+  const { runtime, ctx, entries, setBranchState } = activeRuntime();
+  runtime.beginMainRun("active", false);
+  runtime.submit("Ready for verification.");
+  runtime.finishMainRun([assistant("toolUse")]);
+  runtime.settleMain(ctx);
+  assert.equal(runtime.state?.status, "verifying");
+  setBranchState(structuredClone(runtime.state as GoalState));
+
+  const effects = runtime.restoreTreeBranch(ctx);
+  assert.equal(runtime.state?.status, "paused");
+  assert.deepEqual(runtime.state?.pause, {
+    source: "pi",
+    reason: TREE_VERIFICATION_PAUSE_REASON,
+  });
+  assert.equal(runtime.verifierRunning, false);
+  assert.deepEqual(effects, [{
+    kind: "interrupt-verification-display",
+    details: TREE_VERIFICATION_PAUSE_REASON,
+  }]);
+  assert.equal((entries.at(-1) as GoalState | undefined)?.status, "paused");
 });
 
 test("a busy edit stays pending until main settlement and beats submission", () => {

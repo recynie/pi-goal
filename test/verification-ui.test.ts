@@ -101,6 +101,29 @@ test("verification entry rerenders from verifying to pass with expandable transc
   assert.doesNotMatch(completedExpanded, /npm test|42 tests passed/);
 });
 
+test("tree interruption settles every restored running verification card as an error", () => {
+  const appended: CapturedEntry[] = [];
+  let renderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;
+  const ui = new VerificationUi({
+    registerEntryRenderer: (_type: string, value: typeof renderer) => void (renderer = value),
+    appendEntry: (customType: string, data: unknown) => void appended.push({ customType, data }),
+  } as unknown as ExtensionAPI);
+  const operationId = ui.start(1);
+  assert.ok(renderer);
+  const card = renderer({ data: appended[0]?.data }, { expanded: true }, theme);
+  ui.addInteractions(operationId, [
+    { kind: "tool-call", label: "bash", text: '{ "command": "npm test" }' },
+  ]);
+
+  ui.interruptRunning("Verification stopped after tree navigation.");
+
+  assert.equal(appended.length, 2);
+  const text = card.render(120).join("\n");
+  assert.match(text, /Verification error/);
+  assert.match(text, /Verification stopped after tree navigation/);
+  assert.doesNotMatch(text, /npm test/);
+});
+
 test("verification cards stay isolated when separate Goals both use attempt one", () => {
   const appended: CapturedEntry[] = [];
   let renderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;

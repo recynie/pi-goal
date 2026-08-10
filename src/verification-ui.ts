@@ -118,6 +118,13 @@ export class VerificationUi {
     });
   }
 
+  interruptRunning(details: string): void {
+    const running = [...this.views.values()]
+      .filter((view) => view.status === "verifying")
+      .map((view) => view.operationId);
+    for (const operationId of running) this.finish(operationId, "error", details);
+  }
+
   private append(
     operationId: string,
     attempt: number,

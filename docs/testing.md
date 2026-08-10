@@ -18,7 +18,7 @@ Current coverage includes:
 - pending user-action settlement;
 - pause/resume safety reset;
 - pass/fail verification transitions and verifier-held lifecycle dispatch until settlement;
-- branch-aware canonical state restore;
+- branch-aware canonical state restore on startup and `/tree`, including empty status clearing, idle active restoration, unchanged refinement, and verification interruption pauses;
 - uncertainty-led refinement prompt boundaries, proportional questioning, self-discovered facts, and dependency-aware rounds;
 - no-progress fingerprints;
 - continuation single-flight, pending-message gating, and cancelled delivery interception;

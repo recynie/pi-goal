@@ -14,7 +14,7 @@ Long-running agent tasks commonly fail in three places: the requested outcome st
 - **Keep working** — automatically continue the active Goal across model turns.
 - **Keep the user in control** — review, edit, start, pause, resume, or cancel the Goal.
 - **Verify independently** — evaluate the workspace in a fresh session without the worker transcript.
-- **Preserve session state** — restore the current Goal after reload, compaction, or session resume.
+- **Preserve session state** — restore the current Goal after reload, compaction, session resume, or `/tree` navigation.
 - **Expose the lifecycle** — inspect status, pending actions, submissions, and verifier results in the TUI.
 
 ## How it works
@@ -35,6 +35,8 @@ flowchart LR
 ```
 
 Each Pi session branch has at most one current Goal. Lifecycle changes made while the worker or verifier is running are serialized at settled boundaries, with user actions taking precedence over agent and verifier intents.
+
+After `/tree` navigation, the extension restores the latest Goal state on the selected branch. An `active` Goal waits for the user's next message before automatic continuation resumes. A `refining` Goal remains unchanged. A restored `verifying` Goal becomes `paused` and its stale verifier display settles as an interruption. A branch from before Goal creation has no Goal statusline.
 
 ## Requirements
 
@@ -177,7 +179,7 @@ The verifier intentionally receives a small tool surface: `read`, `bash`, and it
 - The Goal pauses after 25 automatic model runs.
 - It also pauses after three normalized-identical or empty, tool-free automatic runs.
 - User actions beat agent terminal intent, verifier result, Pi pause, and continuation at settled boundaries.
-- Session shutdown aborts and disposes a running fresh verifier.
+- Session shutdown and `/tree` navigation abort and dispose a running fresh verifier.
 
 The initial implementation has fixed safety limits. It does not include a settings UI, Goal queue, token budget, evidence database, verification-plan protocol, or multi-Goal scheduler.
 

@@ -18,7 +18,7 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 - `tools.ts`: `goal_propose`, `goal_submit`, and `goal_pause` adapters plus compact/expanded proposal and submitted-result rendering.
 - `verifier.ts`: isolated in-memory AgentSession, finalized interaction observation, and terminal verifier result tool.
 - `verification-ui.ts`: bounded verifier transcript projection, append-only start/final display entries, and compact/expanded entry rendering.
-- `lifecycle.ts`: Pi event bindings and execution of runtime effects.
+- `lifecycle.ts`: Pi event bindings, branch-navigation restoration, and execution of runtime effects.
 - `index.ts`: extension entrypoint and composition root.
 
 ## Canonical state and transient ownership
@@ -26,6 +26,8 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 `goal-state-v1` custom entries contain only the current Goal state. The latest entry on the active session branch wins. The model has no Goal identity, run-generation, or revision field.
 
 Pending user edit, pause, and cancel requests are canonical because they are explicit user decisions that must survive reload. A legacy `verifying` entry without `submissionResult` restores as a Pi pause so the Goal is preserved and can be resumed and resubmitted under the new protocol. The exact submitted result is also canonical while verification is running so a resumed fresh verifier receives the same user-visible content. Agent proposal/submission/pause intents, continuation tickets, verifier operation ownership, and panel ownership are transient. Losing a transient terminal intent during process shutdown leaves the Goal in its prior safe state; the worker can submit it again after resume.
+
+`session_tree` reloads canonical and observational state from the newly selected branch and clears transient ownership without writing the previous branch's in-memory state at the new leaf. Empty branches clear the Goal statusline. Refining state is restored unchanged. Active state stays idle until the user's next message completes, after which the normal automatic continuation loop resumes. Verifying state becomes a persisted Pi pause and any restored running verifier card settles as an interruption; tree navigation never restarts a historical verifier.
 
 `goal-verification-ui-v1` custom entries are observational state. A start entry anchors one visible verifier card. Finalized interactions update its in-memory projection and request a TUI render; one invisible final snapshot preserves the bounded transcript and result for reload. An observational operation ID prevents attempt-number collisions between successive Goals; it is not Goal or run identity and never enters GoalState, prompts, tools, statusline, or the Control Panel. These entries never participate in Goal restoration or model context.
 
