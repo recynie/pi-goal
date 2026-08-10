@@ -143,7 +143,7 @@ Edit opens a centered multiline editor overlay containing GoalSpec JSON. Submitt
 The main agent receives three lifecycle tools:
 
 - `goal_propose({ mainGoal, subtasks, details })` records a complete draft during refinement. Its collapsed tool result shows the proposed main goal; expanding tool output shows all subtasks and details, followed by a dim review-status note.
-- `goal_submit({ result })` submits the exact final result shown to the user and records verification intent. Verification starts only after the worker settles. Collapsed output shows at most four wrapped lines with an ellipsis when truncated; expanded output shows the complete submitted result.
+- `goal_submit({ result })` submits the exact final result shown to the user and records verification intent. Verification starts at the worker's settled boundary, and the owning lifecycle dispatch remains running until the fresh verifier settles. Collapsed output shows at most four wrapped lines with an ellipsis when truncated; expanded output shows the complete submitted result.
 - `goal_pause({ reason })` records an agent pause intent with a required reason.
 
 Calls are accepted only from the currently owned serial run. The tools do not expose Goal tokens or run-generation parameters to the model.
@@ -164,7 +164,7 @@ Verification appears in the transcript as an expandable card titled **Verifier**
 
 After settlement, the same card emphasizes **PASS**, **FAIL**, or **ERROR**. Collapsed details are width-aware and truncated after three wrapped lines; expanded output shows complete details. Settled cards no longer show verifier traces. These display entries are TUI-only and never enter worker or verifier model context.
 
-Only a structured verifier pass can move the Goal to `complete`. A fail returns details to the main worker as a follow-up. Verifier runtime failure pauses the Goal with a Pi reason.
+Only a structured verifier pass can move the Goal to `complete` and let the successful Goal run become settled. A fail returns details to the main worker as a follow-up so execution resumes; verifier runtime failure pauses the Goal with a Pi reason.
 
 ### Verification trust boundary
 

@@ -110,14 +110,14 @@ verifying
 
 `complete`、`cancelled` 是终止状态。`paused` 保留 Goal 和已有进度，并可通过 `/goal resume` 恢复。
 
-上图表示状态转换的最终结果。若主 agent 或 verifier 正在运行，用户命令和 agent 工具只登记 transition intent，不立即改变状态。当前 run 到达 settled boundary 后，controller 先处理用户 intent，再处理 agent/verifier intent，最后才允许发送下一次 continuation。这里的 settled boundary 指当前一轮 agent run 的 `agent_settled`，或 fresh verifier session 完全 settled；它不是整个 Goal 自动循环结束。
+上图表示状态转换的最终结果。若主 agent 或 verifier 正在运行，用户命令和 agent 工具只登记 transition intent，不立即改变状态。当前 run 到达 settled boundary 后，controller 先处理用户 intent，再处理 agent/verifier intent，最后才允许发送下一次 continuation。这里的 settled boundary 指当前一轮 agent run 到达 `agent_settled` dispatch，或 fresh verifier session 完全 settled；它不是整个 Goal 自动循环结束。若该 dispatch 启动 fresh verifier，extension handler 会持续等待 verifier 完全 settled，因此主 session 不会在验收期间对外发布成功 run 的最终 `agent_settled`。
 
 ### 3.2 状态含义
 
 - `refining`：用户与 agent 正在讨论或等待用户确认 Goal 草案；
 - `active`：主 agent 正在执行自动循环；
 - `paused`：用户、agent 或 Pi 已停止自动执行；agent 和 Pi 触发时需要记录并展示原因；
-- `verifying`：主 agent 已提交用户可见的最终 result，主循环停止，fresh verifier 正在验收；
+- `verifying`：主 agent 已提交用户可见的最终 result，主循环停止，fresh verifier 正在验收；该验收仍属于当前 Goal run 的运行阶段；
 - `complete`：verifier 已确认主目标和全部子任务完成。
 
 ## 4. Goal 的产生
@@ -287,7 +287,7 @@ goal_submit({ result: string })
 
 `result` 是唯一参数，必须包含 worker 要交付给用户的完整结果。Tool result 的 content 保持该字符串不变；renderer 支持折叠和展开：折叠状态按当前宽度换行，最多展示四行，过长时在末行添加省略号；展开状态展示完整 result。这个纯展示截断不修改 runtime 持久化或交给 verifier 的字符串，不允许分别生成“用户版本”和“verifier 版本”。这样，直接在对话中交付答案、分析、报告或其他内容的任务也具有 verifier 可见的验收对象。
 
-调用不会立即改变 Goal status。Tool handler 只接受当前 `active` goal-owned run 中的调用，登记 submission intent，并结束当前 tool batch。主 agent 完全 settled 后，controller 先处理 pending user action；只有没有用户 edit、pause 或 cancel 请求时，才从 `active` 进入 `verifying` 并启动 verifier。
+调用不会立即改变 Goal status。Tool handler 只接受当前 `active` goal-owned run 中的调用，登记 submission intent，并结束当前 tool batch。主 agent 到达 settled dispatch 后，controller 先处理 pending user action；只有没有用户 edit、pause 或 cancel 请求时，才从 `active` 进入 `verifying` 并启动 verifier。该 dispatch 等待 verifier 完全 settled；pass 后才结束成功 run，fail 则先把验收详情送回主 agent 并恢复执行。
 
 ### 7.2 Fresh verifier 的独立性
 

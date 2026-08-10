@@ -45,7 +45,7 @@ The main-session ordering is:
    - Pi interruption/safety pause;
    - automatic continuation.
 
-Fresh verifier settlement uses the same user-first rule. A verifier result is held in its fresh session closure. After `session.prompt()` fully resolves, the main controller first applies any pending user action, then commits pass/fail.
+Fresh verifier settlement uses the same user-first rule. A verifier result is held in its fresh session closure. The main `agent_settled` extension dispatch awaits the fresh verifier, so verification remains part of the owning Goal run and a successful run is not externally settled before verification completes. After `session.prompt()` fully resolves, the main controller first applies any pending user action, then commits pass/fail; a fail queues worker feedback before execution resumes.
 
 ## Independent verifier boundary
 

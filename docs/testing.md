@@ -17,7 +17,7 @@ Current coverage includes:
 - GoalSpec validation and approval;
 - pending user-action settlement;
 - pause/resume safety reset;
-- pass/fail verification transitions;
+- pass/fail verification transitions and verifier-held lifecycle dispatch until settlement;
 - branch-aware canonical state restore;
 - uncertainty-led refinement prompt boundaries, proportional questioning, self-discovered facts, and dependency-aware rounds;
 - no-progress fingerprints;

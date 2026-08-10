@@ -29,7 +29,7 @@ export function registerGoalLifecycle(
           break;
         case "start-verifier": {
           const verificationOperationId = verificationUi.start(effect.attempt);
-          void verifier.verify(
+          await verifier.verify(
             effect.spec,
             effect.result,
             ctx,
