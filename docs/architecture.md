@@ -14,7 +14,7 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 - `continuation.ts`: single-flight intent/delivery controller and cancellation interception.
 - `runtime.ts`: current state, run ownership, transient intents, settled dispatch decisions, persistence, and concise statusline updates.
 - `commands.ts`: `/goal` parsing, command registration, pending user actions, panel orchestration, and kickoff delivery.
-- `ui.ts`: centered scrollable Goal Control overlay, centered inline/external JSON editor overlay, keyboard controls, and status output.
+- `ui.ts`: centered scrollable Goal Control overlay, direct external GoalSpec editing with validation and relaunch, keyboard controls, and status output.
 - `tools.ts`: `goal_propose`, `goal_submit`, and `goal_pause` adapters plus compact/expanded proposal and submitted-result rendering.
 - `verifier.ts`: isolated in-memory AgentSession, finalized interaction observation, and terminal verifier result tool.
 - `verification-ui.ts`: bounded verifier transcript projection, append-only start/final display entries, and compact/expanded entry rendering.
@@ -58,7 +58,7 @@ The verifier session publishes only finalized message events to the display proj
 ## UI invariants
 
 - The Control Panel is a centered overlay with a bounded viewport and line/page scrolling.
-- Edit opens a second centered overlay backed by Pi's extension editor component; the configured external-editor keybinding and command remain active.
+- In TUI mode, Edit directly launches Pi's configured external-editor command; valid JSON updates the draft, invalid JSON reopens in the external editor, and launch or exit failure preserves the draft. Non-TUI UI keeps Pi's editor dialog as a compatibility path.
 - A collapsed `goal_propose` result shows the main goal; expansion adds every subtask and detail before a dim status note.
 - A collapsed `goal_submit` result shows at most four width-aware lines and ends truncated content with an ellipsis; expansion shows the complete unchanged result, which remains identical to verifier input.
 - Verification has one built-in-tool-call-style transcript card per attempt. Its title is `Verifying` over the pending-tool background while running; collapsed output directly tails the latest body-styled trace item, and expanded output shows the complete bounded body-styled trace. After settlement, the title becomes `Verification pass`, `Verification fail`, or `Verification error`; pass uses the successful-tool background, while fail/error use the red failed-tool background. Collapsed output shows a three-line details summary, expanded output shows complete details, and neither mode shows the trace.

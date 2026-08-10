@@ -163,12 +163,12 @@ Details
 然后选择：
 
 - `Start`：固定 Goal，并从 `refining` 进入 `active`；
-- `Edit`：在居中 overlay 中打开多行 GoalSpec JSON editor；提交有效 JSON 后直接返回更新后的 review popup；
+- `Edit`：直接在 Pi 配置的 external editor 中打开 GoalSpec JSON；editor 正常退出且 JSON 有效时保存并返回更新后的 review popup；
 - `Refine with agent`：保持 `refining`，关闭面板并回到当前 conversation 继续讨论。
 
 Draft review 不提供 Cancel 或独立 Close control。用户按 `Esc` 时执行与 `Refine with agent` 完全相同的 action：保留 draft 和 `refining` 状态，退出面板，将焦点交还主 agent 聊天界面。取消整个 Goal 只能显式运行 `/goal cancel`。
 
-Editor overlay 复用 Pi 的 extension editor component，因此支持 inline 多行编辑和 Pi 当前 `app.editor.external` keybinding（默认 `Ctrl+G`）。External editor command 遵循 `externalEditor`、`$VISUAL`、`$EDITOR` 和 Pi 默认值的优先级；该 command 必须对应当前 Pi process 可执行的程序。External editor 退出后返回同一个 popup editor。
+TUI refinement 不提供 inline JSON editor。`Edit` 直接暂停 TUI，并按 `externalEditor`、`$VISUAL`、`$EDITOR` 和 Pi 平台默认值的优先级启动 external editor；该 command 必须对应当前 Pi process 可执行的程序。External editor 正常退出后，扩展读取并校验 JSON：有效内容更新 draft 并返回 Control Panel；无效内容显示错误并带着当前内容重新打开 external editor；启动失败或非零退出则保留原 draft、报告失败并返回 Control Panel。非 TUI UI 仍使用 Pi 的 extension editor dialog 作为兼容路径。
 
 Goal 草案形成和等待用户 Start 都属于 `refining`，不增加单独状态。Agent 可以提出草案，用户拥有最终决定权。未获确认的草案不能驱动自动执行。用户返回聊天界面后可通过 bare `/goal` 重建并重新进入；同一次 draft 提交不会仅因后续 `agent_settled` 再次自动弹出。
 

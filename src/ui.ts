@@ -1,5 +1,8 @@
+import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
-  ExtensionEditorComponent,
   SettingsManager,
   type ExtensionContext,
   type Theme,
@@ -62,58 +65,145 @@ export async function showGoalControlPanel(
 export async function editGoalDraft(runtime: GoalRuntime, ctx: ExtensionContext): Promise<boolean> {
   const draft = runtime.state?.draft;
   if (!draft) throw new Error("No Goal draft is available to edit.");
-  const prefill = `${JSON.stringify(draft, null, 2)}\n`;
-  const value =
-    ctx.mode === "tui"
-      ? await showGoalEditorOverlay(ctx, prefill)
-      : await ctx.ui.editor("Edit GoalSpec JSON", prefill);
-  if (value === undefined) return false;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-  } catch (error) {
-    ctx.ui.notify(`Invalid GoalSpec JSON: ${formatError(error)}`, "error");
-    return false;
-  }
-  try {
-    runtime.setDraft(normalizeGoalSpec(parsed), ctx);
-    return true;
-  } catch (error) {
-    ctx.ui.notify(formatError(error), "error");
-    return false;
+  let prefill = `${JSON.stringify(draft, null, 2)}\n`;
+
+  while (true) {
+    const value =
+      ctx.mode === "tui"
+        ? await showGoalExternalEditor(ctx, prefill)
+        : await ctx.ui.editor("Edit GoalSpec JSON", prefill);
+    if (value === undefined) return false;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch (error) {
+      ctx.ui.notify(`Invalid GoalSpec JSON: ${formatError(error)}`, "error");
+      if (ctx.mode !== "tui") return false;
+      prefill = value;
+      continue;
+    }
+
+    try {
+      runtime.setDraft(normalizeGoalSpec(parsed), ctx);
+      return true;
+    } catch (error) {
+      ctx.ui.notify(formatError(error), "error");
+      if (ctx.mode !== "tui") return false;
+      prefill = value;
+    }
   }
 }
 
-async function showGoalEditorOverlay(
+export type ExternalGoalEditorResult =
+  | { status: "complete"; content: string }
+  | { status: "failed"; reason: string };
+
+export async function runExternalGoalEditor(
+  command: string,
+  content: string,
+): Promise<ExternalGoalEditorResult> {
+  let directory: string | undefined;
+  try {
+    directory = await mkdtemp(join(tmpdir(), "pi-goal-editor-"));
+    const filePath = join(directory, "goal.json");
+    await writeFile(filePath, content, "utf8");
+
+    const [editor, ...editorArgs] = command.split(" ");
+    if (!editor) return { status: "failed", reason: "No external editor command is configured." };
+
+    process.stdout.write(`Launching external editor: ${command}\nPi will resume when the editor exits.\n`);
+    const outcome = await new Promise<{ code: number | null; error?: string }>((resolve) => {
+      const child = spawn(editor, [...editorArgs, filePath], {
+        stdio: "inherit",
+        shell: process.platform === "win32",
+      });
+      child.once("error", (error) => resolve({ code: null, error: formatError(error) }));
+      child.once("close", (code) => resolve({ code }));
+    });
+
+    if (outcome.error) {
+      return {
+        status: "failed",
+        reason: `Could not launch external editor "${command}": ${outcome.error}`,
+      };
+    }
+    if (outcome.code !== 0) {
+      return {
+        status: "failed",
+        reason: `External editor exited with code ${outcome.code ?? "unknown"}.`,
+      };
+    }
+    return { status: "complete", content: await readFile(filePath, "utf8") };
+  } catch (error) {
+    return { status: "failed", reason: `External editor failed: ${formatError(error)}` };
+  } finally {
+    if (directory) await rm(directory, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+async function showGoalExternalEditor(
   ctx: ExtensionContext,
   prefill: string,
 ): Promise<string | undefined> {
-  const externalEditorCommand = SettingsManager.create(ctx.cwd, undefined, {
+  const command = SettingsManager.create(ctx.cwd, undefined, {
     projectTrusted: ctx.isProjectTrusted(),
   }).getExternalEditorCommand();
-  return ctx.ui.custom<string | undefined>(
-    (tui, _theme, keybindings, done) =>
-      new ExtensionEditorComponent(
-        tui,
-        keybindings,
-        "Edit GoalSpec JSON",
-        prefill,
-        done,
-        () => done(undefined),
-        undefined,
-        externalEditorCommand,
-      ),
+  const result = await ctx.ui.custom<ExternalGoalEditorResult>(
+    (tui, _theme, _keybindings, done) => {
+      const launcher = new ExternalGoalEditorLauncher(tui, command, prefill, done);
+      queueMicrotask(() => void launcher.open());
+      return launcher;
+    },
     {
       overlay: true,
       overlayOptions: {
         anchor: "center",
-        width: "92%",
+        width: "60%",
         minWidth: 44,
-        maxHeight: "90%",
+        maxHeight: 5,
         margin: 1,
       },
     },
   );
+  if (result.status === "failed") {
+    ctx.ui.notify(result.reason, "error");
+    return undefined;
+  }
+  return result.content;
+}
+
+class ExternalGoalEditorLauncher implements Component {
+  private opened = false;
+
+  constructor(
+    private readonly tui: TUI,
+    private readonly command: string,
+    private readonly content: string,
+    private readonly done: (result: ExternalGoalEditorResult) => void,
+  ) {}
+
+  async open(): Promise<void> {
+    if (this.opened) return;
+    this.opened = true;
+    let result: ExternalGoalEditorResult;
+    try {
+      this.tui.stop();
+      result = await runExternalGoalEditor(this.command, this.content);
+    } catch (error) {
+      result = { status: "failed", reason: `External editor failed: ${formatError(error)}` };
+    } finally {
+      this.tui.start();
+    }
+    this.done(result);
+    this.tui.requestRender(true);
+  }
+
+  render(width: number): string[] {
+    return [truncateToWidth("Opening external Goal editor…", width)];
+  }
+
+  invalidate(): void {}
 }
 
 export function showGoalStatus(runtime: GoalRuntime, ctx: ExtensionContext): void {
@@ -312,7 +402,7 @@ function panelHelp(state: GoalState | undefined, mainRunBusy: boolean): string {
   const actions = goalPanelActions(state, mainRunBusy);
   return [
     ...(actions.includes("start") ? ["Enter start"] : []),
-    ...(actions.includes("edit") ? ["E edit"] : []),
+    ...(actions.includes("edit") ? ["E external edit"] : []),
     ...(actions.includes("refine") ? ["R refine"] : []),
     ...(actions.includes("pause") ? ["P pause"] : []),
     ...(actions.includes("resume") ? ["P resume"] : []),

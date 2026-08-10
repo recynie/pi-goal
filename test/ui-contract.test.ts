@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { GoalRuntime } from "../src/runtime.js";
@@ -8,6 +11,7 @@ import {
   goalPanelActions,
   goalPanelEscapeAction,
   goalPanelLayout,
+  runExternalGoalEditor,
 } from "../src/ui.js";
 
 const refining = setDraft(createRefiningGoal("Ship"), {
@@ -34,7 +38,7 @@ test("running refinement is read-only until settlement", () => {
   assert.deepEqual(goalPanelActions(refining, false), ["start", "edit", "refine"]);
 });
 
-test("draft editing uses an overlay and saves the edited GoalSpec", async () => {
+test("draft editing launches an external-editor overlay and saves the edited GoalSpec", async () => {
   let saved: GoalSpec | undefined;
   let overlay = false;
   const runtime = {
@@ -53,7 +57,7 @@ test("draft editing uses an overlay and saves the edited GoalSpec", async () => 
     ui: {
       custom: async (_factory: unknown, options: { overlay?: boolean }) => {
         overlay = options.overlay === true;
-        return JSON.stringify(edited);
+        return { status: "complete", content: JSON.stringify(edited) };
       },
       notify: () => {},
     },
@@ -62,6 +66,57 @@ test("draft editing uses an overlay and saves the edited GoalSpec", async () => 
   assert.equal(await editGoalDraft(runtime, ctx), true);
   assert.equal(overlay, true);
   assert.deepEqual(saved, edited);
+});
+
+test("invalid external edits reopen with the edited content", async () => {
+  let saved: GoalSpec | undefined;
+  let calls = 0;
+  const notices: string[] = [];
+  const edited = {
+    mainGoal: "Ship after correction",
+    subtasks: ["Corrected tests pass."],
+    details: [],
+  };
+  const runtime = {
+    state: refining,
+    setDraft: (draft: GoalSpec) => void (saved = draft),
+  } as unknown as GoalRuntime;
+  const ctx = {
+    mode: "tui",
+    cwd: process.cwd(),
+    isProjectTrusted: () => true,
+    ui: {
+      custom: async () => {
+        calls += 1;
+        return calls === 1
+          ? { status: "complete", content: "{ invalid" }
+          : { status: "complete", content: JSON.stringify(edited) };
+      },
+      notify: (message: string) => notices.push(message),
+    },
+  } as unknown as ExtensionContext;
+
+  assert.equal(await editGoalDraft(runtime, ctx), true);
+  assert.equal(calls, 2);
+  assert.match(notices.join("\n"), /Invalid GoalSpec JSON/u);
+  assert.deepEqual(saved, edited);
+});
+
+test("external Goal editor reads the file after the configured command exits", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-goal-ui-test-"));
+  const script = join(directory, "editor.mjs");
+  const edited = JSON.stringify({ mainGoal: "Edited", subtasks: ["Verified"], details: [] });
+  try {
+    await writeFile(
+      script,
+      `import { writeFileSync } from "node:fs";\nwriteFileSync(process.argv[2], ${JSON.stringify(edited)});\n`,
+      "utf8",
+    );
+    const result = await runExternalGoalEditor(`${process.execPath} ${script}`, "{}");
+    assert.deepEqual(result, { status: "complete", content: edited });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("active and verifying GoalSpec views do not offer Edit", () => {

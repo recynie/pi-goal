@@ -51,9 +51,10 @@ test("README documents uncertainty-led proportional refinement", () => {
   assert.match(readme, /never silently selects among materially different interpretations/iu);
 });
 
-test("README documents popup editing, external editing, and proposal expansion", () => {
-  assert.match(readme, /centered multiline editor overlay/iu);
-  assert.match(readme, /Ctrl\+G/iu);
+test("README documents direct external editing and proposal expansion", () => {
+  assert.match(readme, /Edit directly opens the GoalSpec JSON.*configured external editor/iu);
+  assert.match(readme, /Invalid JSON shows an error and reopens the external editor/iu);
+  assert.doesNotMatch(readme, /Ctrl\+G/iu);
   assert.match(readme, /collapsed tool result shows the proposed main goal/iu);
   assert.match(readme, /expanding tool output shows all subtasks and details/iu);
 });

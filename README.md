@@ -128,15 +128,15 @@ Bare `/goal` opens a centered, scrollable TUI overlay. Use `↑`/`↓` or `PageU
 
 | Goal state | Available actions |
 | --- | --- |
-| Idle `refining` | `Enter` Start, `E` Edit, `R` Refine with agent |
+| Idle `refining` | `Enter` Start, `E` External edit, `R` Refine with agent |
 | Running `refining` | Read-only draft, `R` Refine with agent |
 | `active` or `verifying` | Read-only GoalSpec, `P` Pause |
-| `paused` | `P` Resume, `E` Edit, `R` Refine with agent |
+| `paused` | `P` Resume, `E` External edit, `R` Refine with agent |
 | Terminal | Read-only summary |
 
 During draft review, `Esc` and **Refine with agent** both preserve the draft, leave the Goal in `refining`, close the panel, and return focus to the conversation. In other states, `Esc` only closes the panel.
 
-Edit opens a centered multiline editor overlay containing GoalSpec JSON. Submitting valid JSON returns to the refreshed review panel. Pi's configured `app.editor.external` shortcut—`Ctrl+G` by default—opens the same JSON in `externalEditor`, `$VISUAL`, or `$EDITOR`. The resolved command must name an installed executable.
+Edit directly opens the GoalSpec JSON in Pi's configured external editor, resolved from `externalEditor`, `$VISUAL`, `$EDITOR`, or Pi's platform default. Exiting the editor with valid JSON saves the draft and returns to the refreshed review panel. Invalid JSON shows an error and reopens the external editor with the edited content. If the editor cannot be launched or exits unsuccessfully, the panel remains unchanged and reports the failure. The resolved command must name an installed executable.
 
 ## Agent tools
 
