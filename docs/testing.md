@@ -25,7 +25,7 @@ Current coverage includes:
 - user edit precedence over worker submission;
 - verifier user-action precedence;
 - `/goal` parsing and completion;
-- Goal editor overlay persistence, compact/expanded `goal_propose` rendering, and four-line collapsed versus complete expanded `goal_submit` rendering;
+- Goal editor overlay persistence, compact/expanded `goal_propose` rendering, user-visible `goal_pause` reasons, and four-line collapsed versus complete expanded `goal_submit` rendering;
 - verifier-message projection, state-dependent verification titles, tool-outcome backgrounds, rolling collapsed traces, complete expanded traces, settled details-only rendering, width-aware detail summaries, same-card completion rerendering, and display restoration;
 - the verifier's exact `read`, `bash`, and `goal_verification_result` tool allowlist;
 - real Pi resource-loader smoke loading of `src/index.ts`, `/goal`, all three tools, and the verifier entry renderer.

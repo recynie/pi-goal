@@ -83,6 +83,33 @@ test("goal_submit collapses long results and expands to the complete result", ()
   assert.match(expanded, /FINAL-MARKER/);
 });
 
+test("goal_pause shows and records exactly the provided reason", async () => {
+  const tools = new Map<string, CapturedTool>();
+  const pi = {
+    registerTool: (tool: CapturedTool) => void tools.set(tool.name, tool),
+  } as unknown as ExtensionAPI;
+  let pausedReason: string | undefined;
+  const runtime = {
+    pauseFromAgent: (reason: string) => void (pausedReason = reason),
+  } as unknown as GoalRuntime;
+
+  registerGoalTools(pi, runtime);
+  const tool = tools.get("goal_pause");
+  assert.ok(tool);
+  const reason = "A user credential is required.";
+  const output = await tool.execute(
+    "call-1",
+    { reason },
+    new AbortController().signal,
+    () => {},
+    {},
+  );
+
+  assert.equal(pausedReason, reason);
+  assert.deepEqual(output.content, [{ type: "text", text: reason }]);
+  assert.deepEqual(output.details, { reason });
+});
+
 test("goal_submit shows and submits exactly the same result", async () => {
   const tools = new Map<string, CapturedTool>();
   const pi = {

@@ -158,7 +158,7 @@ export function registerGoalTools(pi: ExtensionAPI, runtime: GoalRuntime): void 
         const reason = params.reason.trim();
         runtime.pauseFromAgent(reason);
         return {
-          content: [{ type: "text", text: "Pause intent recorded for the settled boundary." }],
+          content: [{ type: "text", text: reason }],
           details: { reason },
           terminate: true,
         };
