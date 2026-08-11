@@ -28,7 +28,7 @@ test("Pi loads the extension entrypoint and registers its command and tools", as
   assert.ok(extension?.commands.has("goal"));
   assert.deepEqual(
     [...(extension?.tools.keys() ?? [])].sort(),
-    ["goal_pause", "goal_propose", "goal_submit"],
+    ["goal_pause", "goal_propose", "goal_resume", "goal_submit"],
   );
   assert.ok(extension?.entryRenderers?.has("goal-verification-ui-v1"));
 });

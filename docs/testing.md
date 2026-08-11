@@ -16,7 +16,7 @@ Current coverage includes:
 
 - GoalSpec validation and approval;
 - pending user-action settlement;
-- pause/resume safety reset and transcript warnings that expose network-failure pause reasons;
+- user and agent pause/resume safety reset, agent resume from every pause source, settled user-action precedence, and transcript warnings that expose network-failure pause reasons;
 - pass/fail verification transitions and verifier-held lifecycle dispatch until settlement;
 - branch-aware canonical state restore on startup and `/tree`, including empty status clearing, idle active restoration, unchanged refinement, and verification interruption pauses;
 - uncertainty-led refinement prompt boundaries, proportional questioning, self-discovered facts, and dependency-aware rounds;
@@ -25,10 +25,10 @@ Current coverage includes:
 - user edit precedence over worker submission;
 - verifier user-action precedence;
 - `/goal` parsing and completion;
-- direct external Goal editor launching, invalid-JSON relaunch, compact/expanded `goal_propose` rendering, user-visible `goal_pause` reasons, and four-line collapsed versus complete expanded `goal_submit` rendering;
+- direct external Goal editor launching, invalid-JSON relaunch, compact/expanded `goal_propose` rendering, user-visible `goal_pause` reasons, `goal_resume` execution guidance, and four-line collapsed versus complete expanded `goal_submit` rendering;
 - verifier-message projection, state-dependent verification titles, tool-outcome backgrounds, rolling collapsed traces, complete expanded traces, settled details-only rendering, width-aware detail summaries, same-card completion rerendering, and display restoration;
 - the verifier's exact `read`, `bash`, and `goal_verification_result` tool allowlist;
-- real Pi resource-loader smoke loading of `src/index.ts`, `/goal`, all three tools, and the verifier entry renderer.
+- real Pi resource-loader smoke loading of `src/index.ts`, `/goal`, all four tools, and the verifier entry renderer.
 
 ## Isolated Pi launch
 

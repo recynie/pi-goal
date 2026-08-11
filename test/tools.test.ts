@@ -6,6 +6,8 @@ import type { GoalRuntime } from "../src/runtime.js";
 
 interface CapturedTool {
   name: string;
+  promptSnippet?: string;
+  promptGuidelines?: string[];
   renderResult?: (...args: any[]) => { render: (width: number) => string[] };
   execute: (
     toolCallId: string,
@@ -108,6 +110,36 @@ test("goal_pause shows and records exactly the provided reason", async () => {
   assert.equal(pausedReason, reason);
   assert.deepEqual(output.content, [{ type: "text", text: reason }]);
   assert.deepEqual(output.details, { reason });
+});
+
+test("goal_resume requests recovery and tells the agent to use it when work can continue", async () => {
+  const tools = new Map<string, CapturedTool>();
+  const pi = {
+    registerTool: (tool: CapturedTool) => void tools.set(tool.name, tool),
+  } as unknown as ExtensionAPI;
+  let resumeRequested = false;
+  const runtime = {
+    resumeFromAgent: () => void (resumeRequested = true),
+  } as unknown as GoalRuntime;
+
+  registerGoalTools(pi, runtime);
+  const tool = tools.get("goal_resume");
+  assert.ok(tool);
+  const output = await tool.execute(
+    "call-1",
+    {},
+    new AbortController().signal,
+    () => {},
+    {},
+  );
+
+  assert.equal(resumeRequested, true);
+  assert.match(tool.promptSnippet ?? "", /paused Goal.*continue/i);
+  assert.match((tool.promptGuidelines ?? []).join("\n"), /When a paused Goal can continue, call goal_resume/);
+  assert.deepEqual(output.content, [{
+    type: "text",
+    text: "Goal resume requested. Execution will continue after this run settles.",
+  }]);
 });
 
 test("goal_submit shows and submits exactly the same result", async () => {

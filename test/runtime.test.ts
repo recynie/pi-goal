@@ -227,6 +227,40 @@ test("a failed network run visibly announces the Goal pause and reason", () => {
   });
 });
 
+test("agent resume accepts any paused Goal and continues only after settlement", () => {
+  const { runtime, ctx } = activeRuntime();
+  runtime.state = {
+    ...(runtime.state as GoalState),
+    automaticTurns: 9,
+    noProgressTurns: 2,
+  };
+  runtime.pauseForPi("Network connection lost.", ctx);
+
+  runtime.resumeFromAgent();
+  assert.equal(runtime.state?.status, "paused");
+
+  const effects = runtime.settleMain(ctx);
+  assert.equal(runtime.state?.status, "active");
+  assert.equal(runtime.state?.pause, undefined);
+  assert.equal(runtime.state?.automaticTurns, 0);
+  assert.equal(runtime.state?.noProgressTurns, 0);
+  assert.equal(runtime.continuation.hasWork(), true);
+  assert.deepEqual(effects, [{ kind: "dispatch-continuation" }]);
+});
+
+test("pending user action beats an agent resume intent", () => {
+  const { runtime, ctx, setIdle } = activeRuntime();
+  runtime.pauseForPi("Network connection lost.", ctx);
+  runtime.resumeFromAgent();
+  setIdle(false);
+  runtime.requestUserAction("cancel", ctx);
+  setIdle(true);
+
+  assert.deepEqual(runtime.settleMain(ctx), []);
+  assert.equal(runtime.state?.status, "cancelled");
+  assert.equal(runtime.continuation.hasWork(), false);
+});
+
 test("three identical tool-free automatic runs trigger a Pi pause", () => {
   const { runtime, ctx } = activeRuntime();
   for (let index = 0; index < 3; index += 1) {

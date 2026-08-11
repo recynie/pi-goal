@@ -2,7 +2,7 @@
 
 ## Composition
 
-`src/index.ts` creates one extension-factory-owned `GoalRuntime`, `GoalVerifier`, and `GoalCommandController`. It registers lifecycle handlers first, then the three main-agent tools and `/goal` command.
+`src/index.ts` creates one extension-factory-owned `GoalRuntime`, `GoalVerifier`, and `GoalCommandController`. It registers lifecycle handlers first, then the four main-agent tools and `/goal` command.
 
 The implementation keeps one mutable controller per Pi session runtime. Canonical Goal data is immutable at module boundaries: pure transitions in `state.ts` return new objects, and runtime handoffs use structured clones.
 
@@ -15,7 +15,7 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 - `runtime.ts`: current state, run ownership, transient intents, settled dispatch decisions, persistence, and concise statusline updates.
 - `commands.ts`: `/goal` parsing, command registration, pending user actions, panel orchestration, and kickoff delivery.
 - `ui.ts`: centered scrollable Goal Control overlay, direct external GoalSpec editing with validation and relaunch, keyboard controls, and status output.
-- `tools.ts`: `goal_propose`, `goal_submit`, and `goal_pause` adapters plus compact/expanded proposal and submitted-result rendering.
+- `tools.ts`: `goal_propose`, `goal_submit`, `goal_pause`, and `goal_resume` adapters plus compact/expanded proposal and submitted-result rendering.
 - `verifier.ts`: isolated in-memory AgentSession, finalized interaction observation, and terminal verifier result tool.
 - `verification-ui.ts`: bounded verifier transcript projection, append-only start/final display entries, and compact/expanded entry rendering.
 - `lifecycle.ts`: Pi event bindings, branch-navigation restoration, and execution of runtime effects.
@@ -25,7 +25,7 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 
 `goal-state-v1` custom entries contain only the current Goal state. The latest entry on the active session branch wins. The model has no Goal identity, run-generation, or revision field.
 
-Pending user edit, pause, and cancel requests are canonical because they are explicit user decisions that must survive reload. Every `verifying` entry must contain `submissionResult`; normalization rejects entries that violate this invariant. The exact submitted result is canonical while verification is running so a resumed fresh verifier receives the same user-visible content. Agent proposal/submission/pause intents, continuation tickets, verifier operation ownership, and panel ownership are transient. Losing a transient terminal intent during process shutdown leaves the Goal in its prior safe state; the worker can submit it again after resume.
+Pending user edit, pause, and cancel requests are canonical because they are explicit user decisions that must survive reload. Every `verifying` entry must contain `submissionResult`; normalization rejects entries that violate this invariant. The exact submitted result is canonical while verification is running so a resumed fresh verifier receives the same user-visible content. Agent proposal/submission/pause/resume intents, continuation tickets, verifier operation ownership, and panel ownership are transient. Losing a transient intent during process shutdown leaves the Goal in its prior safe state; the agent can repeat the lifecycle call in a later turn.
 
 `session_tree` reloads canonical and observational state from the newly selected branch and clears transient ownership without writing the previous branch's in-memory state at the new leaf. Empty branches clear the Goal statusline. Refining state is restored unchanged. Active state stays idle until the user's next message completes, after which the normal automatic continuation loop resumes. Verifying state becomes a persisted Pi pause and any restored running verifier card settles as an interruption; tree navigation never restarts a historical verifier.
 
@@ -38,12 +38,12 @@ A continuation ticket has an internal delivery marker so a queued extension mess
 The main-session ordering is:
 
 1. `before_agent_start` classifies the run as refining or active and injects the corresponding Goal prompt. Refinement identifies material uncertainties, self-discovers available facts, asks dependency-aware numbered question rounds, avoids exhaustive grilling, and proposes once remaining uncertainty cannot affect execution or acceptance.
-2. Goal tools record proposal or terminal intent.
+2. Goal tools record proposal, terminal, or paused-state resume intent.
 3. `/goal edit`, pause, or cancel during work persists `pendingUserAction` without changing status.
 4. `agent_end` records run outcome, iteration, and automatic-progress observations.
 5. `agent_settled` commits exactly one ordered decision:
    - pending user action;
-   - proposal or agent terminal intent;
+   - proposal or agent pause, resume, or submission intent;
    - Pi interruption/safety pause;
    - automatic continuation.
 
@@ -67,6 +67,7 @@ The verifier session publishes only finalized message events to the display proj
 - The final verification snapshot renders no row; the start-entry component reads the latest projection so completion updates the original card.
 - Goal content is not persisted above the input editor; only the concise `Goal <status> [#N]` statusline remains.
 - Every committed transition to `paused` emits a transcript warning. Agent and Pi pauses include the canonical reason; a reasonless user pause is labeled as user-requested.
+- `goal_resume` accepts every paused Goal regardless of pause source, commits at the caller's settled boundary, and requests normal continuation without creating an agent wake-up while idle.
 - No Control Panel state has a Cancel button.
 - `/goal cancel` is the only user cancellation entry.
 - Refining `Esc` resolves to the same `refine` action as **Refine with agent**.

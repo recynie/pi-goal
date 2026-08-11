@@ -96,6 +96,7 @@ active
 
 paused
   ├─ 用户 resume → active
+  ├─ agent 调用 goal_resume() → active
   ├─ 用户发起修改 → refining
   └─ 用户取消 → cancelled
 
@@ -108,7 +109,7 @@ verifying
   └─ 用户取消 → cancelled
 ```
 
-`complete`、`cancelled` 是终止状态。`paused` 保留 Goal 和已有进度，并可通过 `/goal resume` 恢复。
+`complete`、`cancelled` 是终止状态。`paused` 保留 Goal 和已有进度，可由用户通过 `/goal resume` 恢复，也可由 agent 在后续 turn 中调用 `goal_resume()` 恢复。
 
 上图表示状态转换的最终结果。若主 agent 或 verifier 正在运行，用户命令和 agent 工具只登记 transition intent，不立即改变状态。当前 run 到达 settled boundary 后，controller 先处理用户 intent，再处理 agent/verifier intent，最后才允许发送下一次 continuation。这里的 settled boundary 指当前一轮 agent run 到达 `agent_settled` dispatch，或 fresh verifier session 完全 settled；它不是整个 Goal 自动循环结束。若该 dispatch 启动 fresh verifier，extension handler 会持续等待 verifier 完全 settled，因此主 session 不会在验收期间对外发布成功 run 的最终 `agent_settled`。
 
@@ -233,12 +234,16 @@ Pi 在运行层面的硬性问题或安全边界触发时暂停 Goal，例如：
 
 ### 5.4 Resume
 
-用户运行 `/goal resume` 时 Goal 已经没有运行中的 owner，因此可以立即：
+用户运行 `/goal resume` 时 Goal 已经没有运行中的 owner，因此可以立即恢复。Agent 在任意来源的 `paused` Goal 可以继续执行时，应调用 `goal_resume()`，无需区分暂停来自用户、agent 或 Pi。该工具登记 transient resume intent，并在调用它的 agent turn 到达 settled boundary 后恢复；若同时存在 pending user action，仍先执行用户 action。
+
+两种恢复入口执行相同的状态转换：
 
 - 保留原 Goal 与 workspace 进度；
 - 清除暂停原因；
 - 重置本轮自动执行安全计数；
 - 恢复 `active` 和正常 agent loop。
+
+`goal_resume()` 不主动唤醒 paused 状态下的 agent。它只能由后续已经开始的 agent turn 调用，调用并提交后才重新启动 automatic continuation。
 
 ## 6. Goal 的修改
 
@@ -421,11 +426,11 @@ Goal 进入 `active` 后，主 agent 在原 Pi session 中持续工作：
 
 1. 每轮 `before_agent_start` 注入当前批准 Goal 和持续执行规则；
 2. agent 使用自己的计划实现任务；
-3. `goal_submit` 和 `goal_pause` 只登记 terminal intent，不在 tool handler 中直接转换状态；
+3. `goal_submit` 和 `goal_pause` 只登记 terminal intent，`goal_resume` 只登记 resume intent，tool handler 不直接转换状态；
 4. 运行期间收到的 `/goal edit`、`/goal pause` 和 `/goal cancel` 只登记 pending user action；
 5. `agent_end` 登记 continuation intent，不立即发送 continuation；
 6. `agent_settled` 成为唯一的 main-run transition commit boundary；
-7. controller 先处理 pending user action，再处理 agent terminal intent 或 Pi pause，最后才考虑 continuation；
+7. controller 先处理 pending user action，再处理 agent proposal、pause、resume、submission intent 或 Pi pause，最后才考虑 continuation；
 8. 只有 Goal 仍为 `active`、Pi idle 且没有 pending message 时，才发送一次 continuation。
 
 用户 action 始终优先。Cancel、Edit 或 Pause 一旦被登记，本轮 settled 后就不会启动 verifier，也不会发送下一次 continuation。Tool result、UI callback 和异步消息发送的完成回调都不能绕过 controller 直接写 Goal status。
@@ -505,9 +510,14 @@ goal_submit
 goal_pause
   - 仅 active goal-owned run 可用
   - reason 必填；登记 pause intent
+
+goal_resume
+  - 仅 paused 可用，不区分 pause source
+  - 无参数；当 Goal 可以继续时登记 resume intent
+  - 在当前 agent turn settled 后恢复 active 和 automatic continuation，不主动唤醒 agent
 ```
 
-这些工具不接收 Goal 身份或运行代际参数。Runtime 只允许当前串行 run 登记 intent，并在 settled boundary 提交。Agent 没有修改已批准 Goal 的工具；修改只能由用户命令开启。
+这些工具不接收 Goal 身份或运行代际参数。Runtime 在对应状态登记 intent，并在 settled boundary 提交；proposal、submission 和 pause 仍要求匹配当前串行 Goal run。Agent 没有修改已批准 Goal 的工具；修改只能由用户命令开启。
 
 ### 10.3 Verifier result tool
 
@@ -563,7 +573,7 @@ src/
 ├── state.ts          # GoalState、纯 transition、session persistence
 ├── prompts.ts        # refining、execution、continuation、verifier prompt
 ├── commands.ts       # /goal 路由、Control Panel、pending user action
-├── tools.ts          # propose、submit、pause intent
+├── tools.ts          # propose、submit、pause、resume intent
 ├── lifecycle.ts      # session、compaction、settled transition dispatcher、错误处理
 ├── continuation.ts   # intent/delivery single-flight
 ├── verifier.ts       # fresh session、tool access、interaction observation、result intent
@@ -586,7 +596,7 @@ src/
 1. 单一当前 GoalState、pending user action 与 session persistence；
 2. `/goal` 创建、讨论、草案、Control Panel、确认，以及 Esc/Refine 和 slash-only cancel 交互；
 3. active agent loop、settled transition dispatcher 与 continuation；
-4. 统一 pause/resume 和 Pi error transition；
+4. 统一 user/agent pause/resume 和 Pi error transition；
 5. user-only edit/refine/reapprove，以及 active/verifying UI 只读约束；
 6. `goal_submit({ result })` intent → settled → `verifying`；
 7. full-built-in-tool fresh verifier、result intent 与 verifier settled commit；
@@ -598,7 +608,7 @@ src/
 最终方案有三个固定边界：
 
 1. **目标边界**：用户和主 agent 在开始前共同形成主目标与可验证子任务，只有用户能发起修改；
-2. **转换边界**：每个 session branch 只有一个当前 Goal；运行期间的用户 action、agent terminal intent 和 verifier result 都在对应 settled boundary 串行提交；
+2. **转换边界**：每个 session branch 只有一个当前 Goal；运行期间的用户 action、agent lifecycle intent 和 verifier result 都在对应 settled boundary 串行提交；
 3. **验收边界**：主 agent 通过 `goal_submit` 把同一份最终 result 同时交给用户和 fresh verifier；verifier 使用自己的 context、工具和观察确认该 result 及相关 workspace 状态是否真正满足 Goal。
 
 `active` 和 `verifying` 状态的 Control Panel 只展示 GoalSpec；用户通过 `/goal edit` 把修改请求排到当前 run 之后。用户 action 优先于 submission、verification 和 continuation，因而新旧 Goal 内容不会并发驱动状态转换。

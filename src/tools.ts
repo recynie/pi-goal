@@ -165,6 +165,35 @@ export function registerGoalTools(pi: ExtensionAPI, runtime: GoalRuntime): void 
       },
     }),
   );
+
+  pi.registerTool(
+    defineTool({
+      name: "goal_resume",
+      label: "Resume Goal",
+      description:
+        "Resume the current paused Goal so normal execution can continue automatically.",
+      promptSnippet: "Resume a paused Goal when execution can continue",
+      promptGuidelines: [
+        "Use goal_resume only while the current /goal is paused.",
+        "When a paused Goal can continue, call goal_resume to restore it to active execution; do not leave it paused and merely tell the user to run /goal resume.",
+        "goal_resume does not wake the agent automatically. It resumes Goal execution from the current agent turn.",
+      ],
+      parameters: Type.Object({}),
+      async execute() {
+        runtime.resumeFromAgent();
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Goal resume requested. Execution will continue after this run settles.",
+            },
+          ],
+          details: {},
+          terminate: true,
+        };
+      },
+    }),
+  );
 }
 
 class CollapsedSubmissionResult implements Component {

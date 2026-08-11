@@ -30,7 +30,7 @@ flowchart LR
     F -->|Pass| G[Complete]
     F -->|Fail with details| D
     D -->|Pause| H[Paused]
-    H -->|Resume| D
+    H -->|User or agent resume| D
     H -->|Edit| B
 ```
 
@@ -142,13 +142,14 @@ Edit directly opens the GoalSpec JSON in Pi's configured external editor, resolv
 
 ## Agent tools
 
-The main agent receives three lifecycle tools:
+The main agent receives four lifecycle tools:
 
 - `goal_propose({ mainGoal, subtasks, details })` records a complete draft during refinement. Its collapsed tool result shows the proposed main goal; expanding tool output shows all subtasks and details, followed by a dim review-status note.
 - `goal_submit({ result })` submits the exact final result shown to the user and records verification intent. Verification starts at the worker's settled boundary, and the owning lifecycle dispatch remains running until the fresh verifier settles. Collapsed output shows at most four wrapped lines with an ellipsis when truncated; expanded output shows the complete submitted result.
 - `goal_pause({ reason })` records an agent pause intent with a required reason.
+- `goal_resume()` records an agent resume intent whenever a paused Goal can continue, regardless of who or what paused it. The Goal becomes active at the caller's settled boundary and normal continuation restarts. The tool does not wake the agent automatically.
 
-Calls are accepted only from the currently owned serial run. The tools do not expose Goal tokens or run-generation parameters to the model.
+Proposal, submission, and pause calls are accepted only from the matching currently owned serial run. Resume is accepted whenever the current Goal is paused. The tools do not expose Goal tokens or run-generation parameters to the model.
 
 ## Independent verification
 
@@ -179,7 +180,7 @@ The verifier intentionally receives a small tool surface: `read`, `bash`, and it
 - The Goal pauses after 25 automatic model runs.
 - It also pauses after three normalized-identical or empty, tool-free automatic runs.
 - Every transition to `paused` adds a warning to the transcript. Pi and agent pauses include the recorded reason; user pauses are identified as user-requested.
-- User actions beat agent terminal intent, verifier result, Pi pause, and continuation at settled boundaries.
+- User actions beat agent pause, resume, or submission intent, verifier result, Pi pause, and continuation at settled boundaries.
 - Session shutdown and `/tree` navigation abort and dispose a running fresh verifier.
 
 The initial implementation has fixed safety limits. It does not include a settings UI, Goal queue, token budget, evidence database, verification-plan protocol, or multi-Goal scheduler.

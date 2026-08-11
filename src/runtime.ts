@@ -58,6 +58,7 @@ export class GoalRuntime {
     | { kind: "submit"; result: string }
     | { kind: "pause"; reason: string }
     | undefined;
+  resumeIntent: true | undefined;
   piPauseIntent: string | undefined;
   verifierRunning = false;
   disposed = false;
@@ -276,6 +277,14 @@ export class GoalRuntime {
     this.terminalIntent = { kind: "pause", reason: reason.trim() };
   }
 
+  resumeFromAgent(): void {
+    if (this.state?.status !== "paused") {
+      throw new Error("goal_resume is only available while the current Goal is paused.");
+    }
+    if (this.resumeIntent) throw new Error("A Goal resume intent is already pending.");
+    this.resumeIntent = true;
+  }
+
   settleMain(ctx: ExtensionContext): RuntimeEffect[] {
     if (!this.state) {
       this.clearRunIntents();
@@ -310,6 +319,15 @@ export class GoalRuntime {
       const effects = this.commitPendingUserAction(ctx);
       this.clearRunIntents();
       return effects;
+    }
+
+    if (this.resumeIntent && this.state.status === "paused") {
+      this.continuation.cancel();
+      this.state = resumeGoal(this.state);
+      this.clearRunIntents();
+      this.persist(ctx);
+      this.continuation.request();
+      return [{ kind: "dispatch-continuation" }];
     }
 
     if (this.proposalIntent && this.state.status === "refining") {
@@ -458,6 +476,7 @@ export class GoalRuntime {
     this.completedRun = undefined;
     this.proposalIntent = undefined;
     this.terminalIntent = undefined;
+    this.resumeIntent = undefined;
     this.piPauseIntent = undefined;
     this.verifierRunning = false;
     this.panelOpen = false;
@@ -467,6 +486,7 @@ export class GoalRuntime {
   private clearRunIntents(): void {
     this.proposalIntent = undefined;
     this.terminalIntent = undefined;
+    this.resumeIntent = undefined;
     this.piPauseIntent = undefined;
     this.completedRun = undefined;
     this.currentRun = undefined;
