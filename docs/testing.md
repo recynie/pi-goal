@@ -16,7 +16,7 @@ Current coverage includes:
 
 - GoalSpec validation and approval;
 - pending user-action settlement;
-- pause/resume safety reset;
+- pause/resume safety reset and transcript warnings that expose network-failure pause reasons;
 - pass/fail verification transitions and verifier-held lifecycle dispatch until settlement;
 - branch-aware canonical state restore on startup and `/tree`, including empty status clearing, idle active restoration, unchanged refinement, and verification interruption pauses;
 - uncertainty-led refinement prompt boundaries, proportional questioning, self-discovered facts, and dependency-aware rounds;

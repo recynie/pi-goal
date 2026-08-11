@@ -80,6 +80,7 @@ export class GoalRuntime {
       const action = this.state.pendingUserAction.kind;
       this.state = applyPendingUserAction(this.state);
       this.persist(ctx);
+      if (action === "pause") this.notifyPaused(ctx);
       if (action === "edit") effects.push({ kind: "open-panel" });
     }
     if (this.state.status === "active") {
@@ -123,6 +124,7 @@ export class GoalRuntime {
       const action = this.state.pendingUserAction.kind;
       this.state = applyPendingUserAction(this.state);
       this.persist(ctx);
+      if (action === "pause") this.notifyPaused(ctx);
       if (action === "edit") effects.push({ kind: "open-panel" });
     }
     if (this.state.status === "verifying") {
@@ -131,6 +133,7 @@ export class GoalRuntime {
         { source: "pi", reason: TREE_VERIFICATION_PAUSE_REASON },
       );
       this.persist(ctx);
+      this.notifyPaused(ctx);
       effects.push({
         kind: "interrupt-verification-display",
         details: TREE_VERIFICATION_PAUSE_REASON,
@@ -184,6 +187,7 @@ export class GoalRuntime {
     this.clearRunIntents();
     this.state = pauseGoal(this.state, { source: "pi", reason });
     this.persist(ctx);
+    this.notifyPaused(ctx);
   }
 
   requestUserAction(kind: PendingUserActionKind, ctx: ExtensionContext): RuntimeEffect[] {
@@ -324,6 +328,7 @@ export class GoalRuntime {
       if (terminal.kind === "pause") {
         this.state = pauseGoal(this.state, { source: "agent", reason: terminal.reason });
         this.persist(ctx);
+        this.notifyPaused(ctx);
         this.clearCompletedOnly();
         return [];
       }
@@ -344,6 +349,7 @@ export class GoalRuntime {
       this.continuation.cancel();
       this.state = pauseGoal(this.state, { source: "pi", reason: this.piPauseIntent });
       this.persist(ctx);
+      this.notifyPaused(ctx);
       this.clearRunIntents();
       return [];
     }
@@ -355,6 +361,7 @@ export class GoalRuntime {
         reason: "The Goal run was interrupted before it settled.",
       });
       this.persist(ctx);
+      this.notifyPaused(ctx);
       this.clearRunIntents();
       return [];
     }
@@ -371,6 +378,7 @@ export class GoalRuntime {
       this.continuation.cancel();
       this.state = pauseGoal(this.state, { source: "pi", reason });
       this.persist(ctx);
+      this.notifyPaused(ctx);
       this.clearRunIntents();
       return [];
     }
@@ -391,6 +399,7 @@ export class GoalRuntime {
     if (outcome.kind === "error") {
       this.state = pauseGoal(this.state, { source: "pi", reason: outcome.reason });
       this.persist(ctx);
+      this.notifyPaused(ctx);
       return [];
     }
 
@@ -432,7 +441,14 @@ export class GoalRuntime {
     this.continuation.cancel();
     this.clearRunIntents();
     this.persist(ctx);
+    if (kind === "pause") this.notifyPaused(ctx);
     return kind === "edit" ? [{ kind: "open-panel" }] : [];
+  }
+
+  private notifyPaused(ctx: ExtensionContext): void {
+    if (this.state?.status !== "paused") return;
+    const reason = this.state.pause?.reason;
+    ctx.ui.notify(reason ? `Goal paused — ${reason}` : "Goal paused by user.", "warning");
   }
 
   private clearTransient(resetContinuation = true): void {

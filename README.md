@@ -178,6 +178,7 @@ The verifier intentionally receives a small tool surface: `read`, `bash`, and it
 - A single-flight marker prevents cancelled or superseded deliveries from restarting work.
 - The Goal pauses after 25 automatic model runs.
 - It also pauses after three normalized-identical or empty, tool-free automatic runs.
+- Every transition to `paused` adds a warning to the transcript. Pi and agent pauses include the recorded reason; user pauses are identified as user-requested.
 - User actions beat agent terminal intent, verifier result, Pi pause, and continuation at settled boundaries.
 - Session shutdown and `/tree` navigation abort and dispose a running fresh verifier.
 

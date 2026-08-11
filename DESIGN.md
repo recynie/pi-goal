@@ -195,7 +195,7 @@ Control Panel 使用居中的 `ctx.ui.custom(..., { overlay: true })` popup。�
 
 ## 5. Goal 的暂停与恢复
 
-所有停止自动执行但保留 Goal 的情况统一进入 `paused`。暂停来源记录为 `user`、`agent` 或 `pi`。
+所有停止自动执行但保留 Goal 的情况统一进入 `paused`。暂停来源记录为 `user`、`agent` 或 `pi`。每次状态转换为 `paused` 时，扩展都在 transcript 中追加醒目的 warning：agent 和 Pi 暂停显示 `Goal paused — <reason>`，用户主动暂停显示 `Goal paused by user.`。该提示补充 statusline，并让网络重试耗尽等 run error 后的暂停状态和原因立即可见。
 
 ### 5.1 用户暂停
 

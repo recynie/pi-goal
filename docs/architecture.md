@@ -66,6 +66,7 @@ The verifier session publishes only finalized message events to the display proj
 - Verification has one built-in-tool-call-style transcript card per attempt. Its title is `Verifying` over the pending-tool background while running; collapsed output directly tails the latest body-styled trace item, and expanded output shows the complete bounded body-styled trace. After settlement, the title becomes `Verification pass`, `Verification fail`, or `Verification error`; pass uses the successful-tool background, while fail/error use the red failed-tool background. Collapsed output shows a three-line details summary, expanded output shows complete details, and neither mode shows the trace.
 - The final verification snapshot renders no row; the start-entry component reads the latest projection so completion updates the original card.
 - Goal content is not persisted above the input editor; only the concise `Goal <status> [#N]` statusline remains.
+- Every committed transition to `paused` emits a transcript warning. Agent and Pi pauses include the canonical reason; a reasonless user pause is labeled as user-requested.
 - No Control Panel state has a Cancel button.
 - `/goal cancel` is the only user cancellation entry.
 - Refining `Esc` resolves to the same `refine` action as **Refine with agent**.

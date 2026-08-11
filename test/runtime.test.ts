@@ -14,6 +14,7 @@ import {
 function harness() {
   const entries: unknown[] = [];
   const statuses: Array<string | undefined> = [];
+  const notifications: Array<{ message: string; level: string }> = [];
   let branchEntries: unknown[] = [];
   let widgetCalls = 0;
   let idle = true;
@@ -29,7 +30,7 @@ function harness() {
     ui: {
       setStatus: (_key: string, value: string | undefined) => void statuses.push(value),
       setWidget: () => void (widgetCalls += 1),
-      notify: () => {},
+      notify: (message: string, level: string) => void notifications.push({ message, level }),
     },
   } as unknown as ExtensionContext;
   return {
@@ -37,6 +38,7 @@ function harness() {
     ctx,
     entries,
     statuses,
+    notifications,
     widgetCalls: () => widgetCalls,
     setIdle: (value: boolean) => void (idle = value),
     setBranchState: (state: GoalState | undefined) => {
@@ -205,6 +207,23 @@ test("agent pause intent commits only at settlement", () => {
   assert.deepEqual(runtime.state?.pause, {
     source: "agent",
     reason: "A user credential is required.",
+  });
+});
+
+test("a failed network run visibly announces the Goal pause and reason", () => {
+  const { runtime, ctx, notifications } = activeRuntime();
+  runtime.beginMainRun("active", false);
+  runtime.finishMainRun([{
+    ...assistant("error"),
+    errorMessage: "Network connection lost.",
+  }]);
+
+  runtime.settleMain(ctx);
+
+  assert.equal(runtime.state?.status, "paused");
+  assert.deepEqual(notifications.at(-1), {
+    message: "Goal paused — Network connection lost.",
+    level: "warning",
   });
 });
 
