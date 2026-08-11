@@ -321,17 +321,7 @@ export function normalizeGoalState(value: unknown): GoalState | undefined {
     };
     if ((state.status === "active" || state.status === "verifying") && !state.approved) return undefined;
     if (state.status === "refining" && !state.draft) return undefined;
-    if (state.status === "verifying" && !state.submissionResult) {
-      return {
-        ...state,
-        status: "paused",
-        pause: {
-          source: "pi",
-          reason:
-            "The previous verification has no user-visible submitted result. Resume and submit the final result with goal_submit.",
-        },
-      };
-    }
+    if (state.status === "verifying" && !state.submissionResult) return undefined;
     return state;
   } catch {
     return undefined;

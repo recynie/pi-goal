@@ -92,7 +92,7 @@ test("statusline is concise and counts settled execution rounds", () => {
   assert.doesNotMatch(formatGoalStatus({ ...refining, pendingUserAction: { kind: "edit", requestedAt: 1 } }), /pending|revision/i);
 });
 
-test("legacy verification without a user-visible result restores paused", () => {
+test("verification state without a submitted result is invalid", () => {
   const active = approveDraft(
     setDraft(createRefiningGoal("Ship"), {
       mainGoal: "Ship",
@@ -111,9 +111,7 @@ test("legacy verification without a user-visible result restores paused", () => 
       ],
     },
   });
-  assert.equal(loaded?.status, "paused");
-  assert.equal(loaded?.pause?.source, "pi");
-  assert.match(loaded?.pause?.reason ?? "", /goal_submit/);
+  assert.equal(loaded, undefined);
 });
 
 test("session restore uses the latest canonical branch entry", () => {

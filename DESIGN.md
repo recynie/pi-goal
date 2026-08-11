@@ -468,7 +468,7 @@ interface GoalState {
 }
 ```
 
-GoalState 不包含 revision。`iteration` 统计已经 settled 的 worker execution rounds，statusline 只在该值大于零时把它显示为 `#N`。`submissionResult` 保存原样展示给用户并交给当前 verifier 的 result，使 verifying 状态能够在 reload 后以相同内容恢复。`lastAutomaticOutputFingerprint` 只保存规范化 assistant 可见文本的 SHA-256，用于跨 reload 延续 no-progress 检测；它不是 Goal 或 run 身份。用户 command 被确认后持久化 `pendingUserAction`；session 恢复时，controller 必须先提交该 action，再决定是否恢复 worker 或 verifier。
+GoalState 不包含 revision。`iteration` 统计已经 settled 的 worker execution rounds，statusline 只在该值大于零时把它显示为 `#N`。`submissionResult` 保存原样展示给用户并交给当前 verifier 的 result，使 verifying 状态能够在 reload 后以相同内容恢复；所有 `verifying` 状态都必须包含 `submissionResult`，加载时拒绝违反该不变量的 entry。`lastAutomaticOutputFingerprint` 只保存规范化 assistant 可见文本的 SHA-256，用于跨 reload 延续 no-progress 检测；它不是 Goal 或 run 身份。用户 command 被确认后持久化 `pendingUserAction`；session 恢复时，controller 必须先提交该 action，再决定是否恢复 worker 或 verifier。
 
 Agent 和 verifier intent 属于产生它们的当前 run，只在对应 settled callback 中消费。Session shutdown、replacement 或 extension reload 通过 `AbortSignal`、controller disposal 和对象所有权停止未完成 callback。这些是通用异步资源管理，不进入 Goal state、prompt、tool 参数或 Control Panel。
 
