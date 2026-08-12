@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   type ExtensionAPI,
+  type ExtensionContext,
   type SessionEntry,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
@@ -17,6 +18,9 @@ const MAX_INTERACTIONS = 80;
 const MAX_INTERACTION_TEXT_LENGTH = 8_000;
 const COLLAPSED_TRACE_BODY_LINES = 4;
 const COLLAPSED_DETAILS_LINES = 3;
+const SPINNER_INTERVAL_MS = 100;
+const SPINNER_FRAMES = ["-", "\\", "|", "/"] as const;
+const SPINNER_RENDER_BRIDGE_KEY = "goal-verification-spinner";
 const EMPTY_COMPONENT: Component = {
   render: () => [],
   invalidate: () => {},
@@ -60,6 +64,9 @@ interface VerificationView {
 
 export class VerificationUi {
   private readonly views = new Map<string, VerificationView>();
+  private spinnerFrame = 0;
+  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
+  private clearRenderBridge: (() => void) | undefined;
 
   constructor(private readonly pi: ExtensionAPI) {
     pi.registerEntryRenderer(VERIFICATION_UI_ENTRY_TYPE, (entry, { expanded }, theme) => {
@@ -67,6 +74,7 @@ export class VerificationUi {
       if (!data || data.event.kind !== "start") return EMPTY_COMPONENT;
       return new VerificationEntryComponent(
         () => this.views.get(data.operationId),
+        () => SPINNER_FRAMES[this.spinnerFrame] ?? SPINNER_FRAMES[0],
         expanded,
         theme,
       );
@@ -74,6 +82,7 @@ export class VerificationUi {
   }
 
   restore(entries: readonly SessionEntry[]): void {
+    this.stopSpinner();
     this.views.clear();
     for (const entry of entries) {
       if (entry.type !== "custom" || entry.customType !== VERIFICATION_UI_ENTRY_TYPE) continue;
@@ -82,9 +91,10 @@ export class VerificationUi {
     }
   }
 
-  start(attempt: number): string {
+  start(attempt: number, ctx?: ExtensionContext): string {
     const operationId = randomUUID();
     this.append(operationId, attempt, { kind: "start" });
+    if (ctx?.mode === "tui") this.startSpinner(ctx);
     return operationId;
   }
 
@@ -116,6 +126,13 @@ export class VerificationUi {
       interactions: current.interactions,
       omittedInteractions: current.omittedInteractions,
     });
+    if (![...this.views.values()].some((view) => view.status === "verifying")) {
+      this.stopSpinner();
+    }
+  }
+
+  shutdown(): void {
+    this.stopSpinner();
   }
 
   interruptRunning(details: string): void {
@@ -123,6 +140,35 @@ export class VerificationUi {
       .filter((view) => view.status === "verifying")
       .map((view) => view.operationId);
     for (const operationId of running) this.finish(operationId, "error", details);
+  }
+
+  private startSpinner(ctx: ExtensionContext): void {
+    if (this.spinnerTimer) return;
+    this.spinnerFrame = 0;
+    let requestRender: (() => void) | undefined;
+    // Entry renderers do not receive the TUI. A zero-line widget provides the
+    // supported requestRender handle without adding visible editor content.
+    ctx.ui.setWidget(SPINNER_RENDER_BRIDGE_KEY, (tui) => {
+      requestRender = () => tui.requestRender();
+      return {
+        render: () => [],
+        invalidate: () => {},
+      };
+    });
+    this.clearRenderBridge = () => ctx.ui.setWidget(SPINNER_RENDER_BRIDGE_KEY, undefined);
+    this.spinnerTimer = setInterval(() => {
+      this.spinnerFrame = (this.spinnerFrame + 1) % SPINNER_FRAMES.length;
+      requestRender?.();
+    }, SPINNER_INTERVAL_MS);
+    this.spinnerTimer.unref?.();
+  }
+
+  private stopSpinner(): void {
+    if (this.spinnerTimer) clearInterval(this.spinnerTimer);
+    this.spinnerTimer = undefined;
+    this.clearRenderBridge?.();
+    this.clearRenderBridge = undefined;
+    this.spinnerFrame = 0;
   }
 
   private append(
@@ -230,35 +276,54 @@ export function verificationInteractionsFromMessage(message: unknown): Verificat
 class VerificationEntryComponent implements Component {
   constructor(
     private readonly getView: () => VerificationView | undefined,
+    private readonly getSpinnerFrame: () => string,
     private readonly expanded: boolean,
     private readonly theme: Theme,
   ) {}
 
   render(width: number): string[] {
     const view = this.getView();
-    return view ? renderVerificationView(view, this.expanded, this.theme).render(width) : [];
+    return view
+      ? renderVerificationView(
+          view,
+          this.getSpinnerFrame(),
+          this.expanded,
+          this.theme,
+        ).render(width)
+      : [];
   }
 
   invalidate(): void {}
 }
 
-function renderVerificationView(view: VerificationView, expanded: boolean, theme: Theme): Box {
+function renderVerificationView(
+  view: VerificationView,
+  spinnerFrame: string,
+  expanded: boolean,
+  theme: Theme,
+): Box {
   const background =
     view.status === "verifying"
       ? "toolPendingBg"
       : view.status === "pass"
         ? "toolSuccessBg"
         : "toolErrorBg";
-  const title =
-    view.status === "verifying"
-      ? "Verifying"
-      : view.status === "pass"
-        ? "Verification pass"
-        : view.status === "fail"
-          ? "Verification fail"
-          : "Verification error";
+  const settledTitle =
+    view.status === "pass"
+      ? "Verification pass"
+      : view.status === "fail"
+        ? "Verification fail"
+        : "Verification error";
   const box = new Box(1, 0, (text) => theme.bg(background, text));
-  box.addChild(new Text(theme.fg("toolTitle", theme.bold(title)), 0, 0));
+  box.addChild(
+    new Text(
+      view.status === "verifying"
+        ? `${theme.fg("toolTitle", theme.bold("Verifying"))} ${theme.fg("dim", `[${spinnerFrame}]`)}`
+        : theme.fg("toolTitle", theme.bold(settledTitle)),
+      0,
+      0,
+    ),
+  );
 
   if (view.status !== "verifying") {
     if (view.details) {

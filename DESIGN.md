@@ -372,7 +372,7 @@ Runtime 只处理协议正确性和串行状态转换。是否符合 Goal 由独
 
 Controller 启动 fresh verifier 时，在主 session transcript 中追加一个 TUI-only `goal-verification-ui-v1` custom entry 作为稳定显示锚点。该 entry 使用类似 tool result 的自定义 renderer：
 
-- card 使用 built-in tool call 的 title 与 outcome background 样式；验收运行期间 title 为 `Verifying`，使用 `toolPendingBg`；
+- card 使用 built-in tool call 的 title 与 outcome background 样式；验收运行期间以 `[-]`、`[\]`、`[|]`、`[/]` bracketed ASCII spinner 作为粗体 `Verifying` title 的 dim、非粗体后缀，使用 `toolPendingBg`；spinner 在验收 settled 或 session shutdown 时停止；
 - 验收运行期间，折叠状态直接使用最多四行的 viewport 滚动展示最新一条 trace；
 - 验收运行期间，展开状态显示完整的有界 verifier trace，包括 request、已经 finalized 的 thinking/assistant 内容、tool calls 和 tool results；所有 trace label 和正文都使用普通 `toolOutput` 正文样式，不对 `bash`、`read` 等 label 使用蓝色或粗体；
 - verifier settled 后，同一个锚点重新渲染，title 变为 `Verification pass`、`Verification fail` 或 `Verification error`；pass 使用 `toolSuccessBg`，fail/error 使用与失败 tool call 相同的红色 `toolErrorBg`；

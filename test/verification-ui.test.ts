@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ExtensionAPI, SessionEntry } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  SessionEntry,
+} from "@earendil-works/pi-coding-agent";
 import {
   VERIFICATION_UI_ENTRY_TYPE,
   VerificationUi,
@@ -186,6 +190,54 @@ test("verification display restores the latest event from session entries", () =
   assert.match(text, /A required check failed/);
 });
 
+test("running verification title animates a bracketed ASCII spinner and stops after settlement", async () => {
+  const appended: CapturedEntry[] = [];
+  let renderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;
+  let resolveRender: (() => void) | undefined;
+  const renderRequested = new Promise<void>((resolve) => void (resolveRender = resolve));
+  let renderRequests = 0;
+  let bridgeClears = 0;
+  const ui = new VerificationUi({
+    registerEntryRenderer: (_type: string, value: typeof renderer) => void (renderer = value),
+    appendEntry: (customType: string, data: unknown) => void appended.push({ customType, data }),
+  } as unknown as ExtensionAPI);
+  const ctx = {
+    mode: "tui",
+    ui: {
+      setWidget: (_key: string, content: unknown) => {
+        if (typeof content !== "function") {
+          bridgeClears++;
+          return;
+        }
+        content({
+          requestRender: () => {
+            renderRequests++;
+            resolveRender?.();
+          },
+        }, theme);
+      },
+    },
+  } as unknown as ExtensionContext;
+
+  const operationId = ui.start(1, ctx);
+  assert.ok(renderer);
+  const card = renderer({ data: appended[0]?.data }, { expanded: false }, theme);
+  const initial = card.render(120).join("\n");
+  assert.match(initial, /Verifying \[-\]/);
+
+  const timeout = setTimeout(() => resolveRender?.(), 500);
+  await renderRequested;
+  clearTimeout(timeout);
+  assert.ok(renderRequests > 0, "spinner should request a transcript rerender");
+  assert.notEqual(card.render(120).join("\n"), initial);
+
+  ui.finish(operationId, "pass", "Verified.");
+  const requestsAtSettlement = renderRequests;
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(renderRequests, requestsAtSettlement);
+  assert.equal(bridgeClears, 1);
+});
+
 test("verification titles and traces use tool styles with tool outcome backgrounds", () => {
   const appended: CapturedEntry[] = [];
   let renderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;
@@ -217,6 +269,7 @@ test("verification titles and traces use tool styles with tool outcome backgroun
     { kind: "tool-call", label: "bash", text: "npm test" },
   ]);
   card.render(120);
+  assert.ok(fgCalls.some((call) => call.color === "dim" && call.text === "[-]"));
   assert.ok(fgCalls.some((call) => call.color === "toolTitle" && call.text === "Verifying"));
   assert.ok(fgCalls.some((call) => call.color === "toolOutput" && call.text === "bash"));
   assert.ok(bgCalls.some((call) => call.color === "toolPendingBg"));

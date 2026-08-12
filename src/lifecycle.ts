@@ -28,7 +28,7 @@ export function registerGoalLifecycle(
           }
           break;
         case "start-verifier": {
-          const verificationOperationId = verificationUi.start(effect.attempt);
+          const verificationOperationId = verificationUi.start(effect.attempt, ctx);
           await verifier.verify(
             effect.spec,
             effect.result,
@@ -81,6 +81,7 @@ export function registerGoalLifecycle(
 
   pi.on("session_shutdown", (_event, ctx) => {
     verifier.shutdown();
+    verificationUi.shutdown();
     runtime.shutdown(ctx);
   });
 
