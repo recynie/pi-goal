@@ -79,8 +79,8 @@ test("proposed Goal skips refinement and becomes active immediately", () => {
   assert.equal(runtime.state?.status, "active");
   assert.deepEqual(spec, {
     mainGoal: "Ship the docs",
-    subtasks: ["Ship the docs"],
-    details: ["Created with /goal propose; refinement and draft review were skipped."],
+    subtasks: [],
+    details: [],
   });
   assert.equal(entries.length, 1);
 });

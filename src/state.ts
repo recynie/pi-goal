@@ -85,6 +85,20 @@ export function createRefiningGoal(mainGoal: string, now = Date.now()): GoalStat
   };
 }
 
+export function createActiveGoal(mainGoal: string, now = Date.now()): GoalState {
+  const refining = createRefiningGoal(mainGoal, now);
+  return {
+    ...refining,
+    status: "active",
+    draft: undefined,
+    approved: {
+      mainGoal: refining.draft!.mainGoal,
+      subtasks: [],
+      details: [],
+    },
+  };
+}
+
 export function normalizeGoalSpec(value: unknown, requireSubtasks = true): GoalSpec {
   if (!isRecord(value)) throw new Error("GoalSpec must be an object.");
   const mainGoal = normalizeRequiredText(value.mainGoal, MAX_MAIN_GOAL_LENGTH, "mainGoal");
@@ -289,7 +303,8 @@ export function normalizeGoalState(value: unknown): GoalState | undefined {
   }
   try {
     const draft = value.draft === undefined ? undefined : normalizeGoalSpec(value.draft, false);
-    const approved = value.approved === undefined ? undefined : normalizeGoalSpec(value.approved);
+    const approved =
+      value.approved === undefined ? undefined : normalizeGoalSpec(value.approved, false);
     const pause = normalizePause(value.pause);
     const pendingUserAction = normalizePendingUserAction(value.pendingUserAction);
     const lastVerification = normalizeLastVerification(value.lastVerification);

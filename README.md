@@ -99,7 +99,7 @@ pi -ne -e ./src/index.ts --no-session
 /goal cancel       # cancel the current Goal
 ```
 
-`/goal propose <main goal>` skips agent refinement and Control Panel review. It creates an active Goal whose initial verifiable subtask is the supplied main-goal text, then starts execution immediately.
+`/goal propose <main goal>` skips agent refinement and Control Panel review. It creates an active Goal with the supplied main goal, empty `subtasks`, and empty `details`, then starts execution immediately.
 
 When the worker or verifier is running, pause, edit, and cancel are persisted as pending user actions. The current run is allowed to settle. The user action is committed before worker submission, verification, or another automatic continuation. When no run is in progress, the requested lifecycle change is applied immediately. Pause is accepted only for an active or verifying Goal.
 
@@ -125,7 +125,7 @@ A GoalSpec has three fields:
 }
 ```
 
-Every approved Goal requires at least one non-empty, verifiable subtask.
+GoalSpecs approved through refinement require at least one non-empty, verifiable subtask. Direct `/goal propose` activation intentionally starts with empty `subtasks` and `details`.
 
 ## Goal Control Panel
 

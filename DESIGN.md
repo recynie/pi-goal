@@ -133,7 +133,7 @@ verifying
 
 这段文字是 Goal 的初始提案，不会立即开始长程执行。状态进入 `refining`。
 
-用户也可以输入 `/goal propose <main goal>`。该形式跳过 agent refinement 和 Control Panel 确认，将输入文字同时作为 main goal 和初始可验证 subtask，直接持久化为 `active` Goal，并立即发送 execution kickoff。现有非终止 Goal 仍会拒绝创建。
+用户也可以输入 `/goal propose <main goal>`。该形式跳过 agent refinement 和 Control Panel 确认，只设置输入文字为 main goal，保持 `subtasks` 和 `details` 为空，直接持久化为 `active` Goal，并立即发送 execution kickoff。现有非终止 Goal 仍会拒绝创建。
 
 ### 4.2 Agent 与用户共同细化
 

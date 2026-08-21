@@ -5,6 +5,7 @@ import {
   applyPendingUserAction,
   approveDraft,
   beginVerification,
+  createActiveGoal,
   createRefiningGoal,
   finishVerification,
   formatGoalStatus,
@@ -155,12 +156,7 @@ export class GoalRuntime {
   createApprovedGoal(mainGoal: string, ctx: ExtensionContext): GoalSpec {
     this.assertGoalCanBeCreated();
     this.clearTransient();
-    const refining = createRefiningGoal(mainGoal);
-    this.state = approveDraft(setDraft(refining, {
-      mainGoal,
-      subtasks: [mainGoal],
-      details: ["Created with /goal propose; refinement and draft review were skipped."],
-    }));
+    this.state = createActiveGoal(mainGoal);
     this.persist(ctx);
     return structuredClone(this.state.approved as GoalSpec);
   }

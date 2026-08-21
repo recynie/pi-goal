@@ -4,6 +4,7 @@ import {
   applyPendingUserAction,
   approveDraft,
   beginVerification,
+  createActiveGoal,
   createRefiningGoal,
   finishVerification,
   formatGoalStatus,
@@ -27,6 +28,24 @@ test("refining draft must have verifiable subtasks before approval", () => {
   const active = approveDraft(setDraft(state, draft, 2), 3);
   assert.equal(active.status, "active");
   assert.deepEqual(active.approved, draft);
+});
+
+test("directly activated Goal keeps subtasks and details empty across restore", () => {
+  const active = createActiveGoal("Ship directly", 1);
+  assert.deepEqual(active.approved, {
+    mainGoal: "Ship directly",
+    subtasks: [],
+    details: [],
+  });
+
+  const loaded = loadGoalStateFromSession({
+    sessionManager: {
+      getBranch: () => [
+        { type: "custom", customType: GOAL_STATE_ENTRY_TYPE, data: active },
+      ],
+    },
+  });
+  assert.deepEqual(loaded?.approved, active.approved);
 });
 
 test("pending user edit is committed only when the dispatcher applies it", () => {
