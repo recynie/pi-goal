@@ -89,14 +89,17 @@ pi -ne -e ./src/index.ts --no-session
 ## Commands
 
 ```text
-/goal <main goal>  # create a Goal draft and begin agent-assisted refinement
-/goal              # open the state-aware Goal Control Panel
-/goal status       # show a non-interactive status summary
+/goal <main goal>          # create a Goal draft and begin agent-assisted refinement
+/goal                      # open the state-aware Goal Control Panel
+/goal propose <main goal>  # approve the text as a Goal and start execution immediately
+/goal status               # show a non-interactive status summary
 /goal pause        # pause an active or verifying Goal
 /goal resume       # resume a paused Goal and restart execution
 /goal edit         # edit a refining draft or return an approved Goal to refinement
 /goal cancel       # cancel the current Goal
 ```
+
+`/goal propose <main goal>` skips agent refinement and Control Panel review. It creates an active Goal whose initial verifiable subtask is the supplied main-goal text, then starts execution immediately.
 
 When the worker or verifier is running, pause, edit, and cancel are persisted as pending user actions. The current run is allowed to settle. The user action is committed before worker submission, verification, or another automatic continuation. When no run is in progress, the requested lifecycle change is applied immediately. Pause is accepted only for an active or verifying Goal.
 

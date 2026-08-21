@@ -15,6 +15,15 @@ test("lifecycle subcommands are exact and other text is a main goal", () => {
   });
 });
 
-test("command completion includes slash-only cancel", () => {
+test("propose parses its remaining text as an immediately approved main goal", () => {
+  assert.deepEqual(parseGoalCommand("propose ship the docs"), {
+    kind: "propose",
+    mainGoal: "ship the docs",
+  });
+  assert.deepEqual(parseGoalCommand("propose"), { kind: "propose", mainGoal: "" });
+});
+
+test("command completion includes propose and slash-only cancel", () => {
+  assert.deepEqual(completeGoalArguments("pr"), [{ value: "propose", label: "propose" }]);
   assert.deepEqual(completeGoalArguments("ca"), [{ value: "cancel", label: "cancel" }]);
 });

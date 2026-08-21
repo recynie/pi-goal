@@ -133,6 +133,8 @@ verifying
 
 这段文字是 Goal 的初始提案，不会立即开始长程执行。状态进入 `refining`。
 
+用户也可以输入 `/goal propose <main goal>`。该形式跳过 agent refinement 和 Control Panel 确认，将输入文字同时作为 main goal 和初始可验证 subtask，直接持久化为 `active` Goal，并立即发送 execution kickoff。现有非终止 Goal 仍会拒绝创建。
+
 ### 4.2 Agent 与用户共同细化
 
 主 agent 在当前 conversation 中采用按重要不确定性驱动、与 Goal 风险成比例的 refinement：
@@ -484,8 +486,9 @@ Agent 和 verifier intent 属于产生它们的当前 run，只在对应 settled
 ### 10.1 用户命令
 
 ```text
-/goal <main goal>  # 创建 Goal，进入讨论细化
-/goal              # 打开统一 Goal Control Panel
+/goal <main goal>          # 创建 Goal，进入讨论细化
+/goal                      # 打开统一 Goal Control Panel
+/goal propose <main goal>  # 跳过细化和确认，直接批准并执行
 /goal status       # 输出非交互式状态摘要
 /goal pause
 /goal resume

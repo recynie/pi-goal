@@ -42,6 +42,11 @@ export class GoalCommandController {
           this.runtime.createGoal(command.mainGoal, ctx);
           this.pi.sendUserMessage(buildRefinementKickoff(command.mainGoal), { deliverAs: "followUp" });
           return;
+        case "propose": {
+          const spec = this.runtime.createApprovedGoal(command.mainGoal, ctx);
+          this.sendExecutionPrompt(buildExecutionKickoff(spec), ctx);
+          return;
+        }
         case "pause":
         case "edit":
         case "cancel": {
@@ -141,7 +146,7 @@ export class GoalCommandController {
 export type ParsedGoalCommand =
   | { kind: "panel" }
   | { kind: "status" | "pause" | "resume" | "edit" | "cancel" }
-  | { kind: "start"; mainGoal: string };
+  | { kind: "start" | "propose"; mainGoal: string };
 
 export function parseGoalCommand(args: string): ParsedGoalCommand {
   const trimmed = args.trim();
@@ -149,11 +154,14 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
   if (["status", "pause", "resume", "edit", "cancel"].includes(trimmed)) {
     return { kind: trimmed as "status" | "pause" | "resume" | "edit" | "cancel" };
   }
+  if (/^propose(?:\s|$)/u.test(trimmed)) {
+    return { kind: "propose", mainGoal: trimmed.slice("propose".length).trim() };
+  }
   return { kind: "start", mainGoal: trimmed };
 }
 
 export function completeGoalArguments(prefix: string): AutocompleteItem[] | null {
-  const commands = ["status", "pause", "resume", "edit", "cancel"];
+  const commands = ["propose", "status", "pause", "resume", "edit", "cancel"];
   const matches = commands
     .filter((command) => command.startsWith(prefix.trim()))
     .map((command) => ({ value: command, label: command }));

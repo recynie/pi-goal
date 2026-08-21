@@ -146,12 +146,23 @@ export class GoalRuntime {
   }
 
   createGoal(mainGoal: string, ctx: ExtensionContext): void {
-    if (this.state && this.state.status !== "complete" && this.state.status !== "cancelled") {
-      throw new Error("A current Goal already exists. Use /goal edit or /goal cancel first.");
-    }
+    this.assertGoalCanBeCreated();
     this.clearTransient();
     this.state = createRefiningGoal(mainGoal);
     this.persist(ctx);
+  }
+
+  createApprovedGoal(mainGoal: string, ctx: ExtensionContext): GoalSpec {
+    this.assertGoalCanBeCreated();
+    this.clearTransient();
+    const refining = createRefiningGoal(mainGoal);
+    this.state = approveDraft(setDraft(refining, {
+      mainGoal,
+      subtasks: [mainGoal],
+      details: ["Created with /goal propose; refinement and draft review were skipped."],
+    }));
+    this.persist(ctx);
+    return structuredClone(this.state.approved as GoalSpec);
   }
 
   setDraft(draft: GoalSpec, ctx: ExtensionContext): void {
@@ -461,6 +472,12 @@ export class GoalRuntime {
     this.persist(ctx);
     if (kind === "pause") this.notifyPaused(ctx);
     return kind === "edit" ? [{ kind: "open-panel" }] : [];
+  }
+
+  private assertGoalCanBeCreated(): void {
+    if (this.state && this.state.status !== "complete" && this.state.status !== "cancelled") {
+      throw new Error("A current Goal already exists. Use /goal edit or /goal cancel first.");
+    }
   }
 
   private notifyPaused(ctx: ExtensionContext): void {

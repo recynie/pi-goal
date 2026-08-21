@@ -29,7 +29,9 @@ test("README documents the complete implemented Goal command surface", () => {
   const implementedForms = [
     "/goal <main goal>",
     "/goal",
-    ...completions.map(({ value }) => `/goal ${value}`),
+    ...completions.map(({ value }) =>
+      value === "propose" ? "/goal propose <main goal>" : `/goal ${value}`,
+    ),
   ];
 
   assert.deepEqual([...documentedCommands().keys()], implementedForms);
@@ -88,6 +90,10 @@ test("README describes command purposes and settled-boundary behavior", () => {
   const descriptions = documentedCommands();
   assert.match(descriptions.get("/goal <main goal>") ?? "", /create.*draft.*refinement/iu);
   assert.match(descriptions.get("/goal") ?? "", /Control Panel/u);
+  assert.match(
+    descriptions.get("/goal propose <main goal>") ?? "",
+    /approve.*start execution immediately/iu,
+  );
   assert.match(descriptions.get("/goal status") ?? "", /non-interactive status/iu);
   assert.match(descriptions.get("/goal pause") ?? "", /active or verifying Goal/iu);
   assert.match(descriptions.get("/goal resume") ?? "", /resume a paused Goal.*execution/iu);

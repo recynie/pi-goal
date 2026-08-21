@@ -72,6 +72,19 @@ test("runtime uses the statusline without setting an above-editor widget", () =>
   assert.equal(statuses.at(-1), "Goal active");
 });
 
+test("proposed Goal skips refinement and becomes active immediately", () => {
+  const { runtime, ctx, entries } = harness();
+  const spec = runtime.createApprovedGoal("Ship the docs", ctx);
+
+  assert.equal(runtime.state?.status, "active");
+  assert.deepEqual(spec, {
+    mainGoal: "Ship the docs",
+    subtasks: ["Ship the docs"],
+    details: ["Created with /goal propose; refinement and draft review were skipped."],
+  });
+  assert.equal(entries.length, 1);
+});
+
 test("tree restore clears Goal state and status before the Goal was created", () => {
   const { runtime, ctx, statuses, setBranchState } = activeRuntime();
   runtime.continuation.request();

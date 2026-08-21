@@ -13,7 +13,7 @@ The implementation keeps one mutable controller per Pi session runtime. Canonica
 - `safety.ts`: visible-output normalization, SHA-256 fingerprints, and no-progress accounting.
 - `continuation.ts`: single-flight intent/delivery controller and cancellation interception.
 - `runtime.ts`: current state, run ownership, transient intents, settled dispatch decisions, persistence, and concise statusline updates.
-- `commands.ts`: `/goal` parsing, command registration, pending user actions, panel orchestration, and kickoff delivery.
+- `commands.ts`: `/goal` parsing, command registration, direct `/goal propose <main goal>` activation, pending user actions, panel orchestration, and kickoff delivery.
 - `ui.ts`: centered scrollable Goal Control overlay, direct external GoalSpec editing with validation and relaunch, keyboard controls, and status output.
 - `tools.ts`: `goal_propose`, `goal_submit`, `goal_pause`, and `goal_resume` adapters plus compact/expanded proposal and submitted-result rendering.
 - `verifier.ts`: isolated in-memory AgentSession, finalized interaction observation, and terminal verifier result tool.
