@@ -45,23 +45,29 @@ After `/tree` navigation, the extension restores the latest Goal state on the se
 
 ## Install and try
 
-Install the extension directly from GitHub:
+Install the extension from npm:
 
 ```bash
-pi install git:github.com/recynie/pi-goal
+pi install npm:@recynie/pi-goal
 ```
 
 Restart Pi after installation. To try the extension for one run without adding it to Pi settings:
 
 ```bash
-pi -e git:github.com/recynie/pi-goal
+pi -e npm:@recynie/pi-goal
 ```
 
 Update or remove the installed extension with:
 
 ```bash
-pi update --extension git:github.com/recynie/pi-goal
-pi remove git:github.com/recynie/pi-goal
+pi update npm:@recynie/pi-goal
+pi remove npm:@recynie/pi-goal
+```
+
+You can also install the latest source directly from GitHub:
+
+```bash
+pi install git:github.com/recynie/pi-goal
 ```
 
 For local development, install dependencies and load the source checkout explicitly:

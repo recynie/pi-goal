@@ -4,6 +4,18 @@
   "description": "A Pi Goal mode with collaborative refinement and independent workspace verification.",
   "type": "module",
   "license": "MIT",
+  "author": "recynie",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/recynie/pi-goal.git"
+  },
+  "homepage": "https://github.com/recynie/pi-goal#readme",
+  "bugs": {
+    "url": "https://github.com/recynie/pi-goal/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -24,6 +36,7 @@
   },
   "scripts": {
     "check": "npm run typecheck && npm test",
+    "prepublishOnly": "npm run check",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
