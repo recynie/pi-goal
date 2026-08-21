@@ -23,7 +23,18 @@ test("propose parses its remaining text as an immediately approved main goal", (
   assert.deepEqual(parseGoalCommand("propose"), { kind: "propose", mainGoal: "" });
 });
 
-test("command completion includes propose and slash-only cancel", () => {
-  assert.deepEqual(completeGoalArguments("pr"), [{ value: "propose", label: "propose" }]);
-  assert.deepEqual(completeGoalArguments("ca"), [{ value: "cancel", label: "cancel" }]);
+test("command completion includes descriptions for propose and slash-only cancel", () => {
+  assert.deepEqual(completeGoalArguments("pr"), [
+    {
+      value: "propose",
+      label: "propose",
+      description: "Approve a main goal and start execution immediately",
+    },
+  ]);
+  assert.deepEqual(completeGoalArguments("ca"), [
+    { value: "cancel", label: "cancel", description: "Cancel the current Goal" },
+  ]);
+  for (const completion of completeGoalArguments("") ?? []) {
+    assert.ok(completion.description, `${completion.value} should have a description`);
+  }
 });

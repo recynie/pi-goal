@@ -161,10 +161,23 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 }
 
 export function completeGoalArguments(prefix: string): AutocompleteItem[] | null {
-  const commands = ["propose", "status", "pause", "resume", "edit", "cancel"];
-  const matches = commands
-    .filter((command) => command.startsWith(prefix.trim()))
-    .map((command) => ({ value: command, label: command }));
+  const commands: AutocompleteItem[] = [
+    {
+      value: "propose",
+      label: "propose",
+      description: "Approve a main goal and start execution immediately",
+    },
+    { value: "status", label: "status", description: "Show a non-interactive status summary" },
+    { value: "pause", label: "pause", description: "Pause an active or verifying Goal" },
+    { value: "resume", label: "resume", description: "Resume a paused Goal and restart execution" },
+    {
+      value: "edit",
+      label: "edit",
+      description: "Edit a draft or return an approved Goal to refinement",
+    },
+    { value: "cancel", label: "cancel", description: "Cancel the current Goal" },
+  ];
+  const matches = commands.filter((command) => command.value.startsWith(prefix.trim()));
   return matches.length > 0 ? matches : null;
 }
 
